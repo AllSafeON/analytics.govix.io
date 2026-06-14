@@ -133,7 +133,7 @@ hr{border:none;border-top:1px solid var(--border);margin:20px 0}
 
   <div class="card-grid">
     <div class="card">
-      <div class="card-title">Длительность звонков</div>
+      <div class="card-title">Когорт анализ</div>
       <div class="legend">
         <span><span class="ld" style="background:#E24B4A"></span>0–5 сек</span>
         <span><span class="ld" style="background:#EF9F27"></span>5–30 сек</span>
@@ -571,10 +571,10 @@ function renderDashboard(data) {
   // FUNNEL
   const fData = [
     {label:'Все с диалогом', pct:100, n:stageBase, bar:'#B5D4F4', tx:'#0C447C', drop:null},
-    {label:'1. Согласие на разговор', pct:agreedPct, n:stages[1], bar:'#9FE1CB', tx:'#085041', drop:`−${100-agreedPct}%`},
-    {label:'2. Рассказ про оффер', pct:offerPct, n:stages[2], bar:'#FAC775', tx:'#633806', drop:`−${agreedPct-offerPct} п.п.`},
-    {label:'3. Договорились о встрече', pct:meetPct, n:stages[3], bar:'#F5C4B3', tx:'#712B13', drop:`−${offerPct-meetPct} п.п.`},
-    {label:'4. Квалифицированы', pct:qualPct, n:stages[4], bar:'#C0DD97', tx:'#27500A', drop:`−${meetPct-qualPct} п.п.`},
+    {label:'1. Квалифицированы', pct:qualPct, n:stages[4], bar:'#C0DD97', tx:'#27500A', drop:`−${100-qualPct}%`},
+    {label:'2. Согласие на разговор', pct:agreedPct, n:stages[1], bar:'#9FE1CB', tx:'#085041', drop:`−${qualPct-agreedPct} п.п.`},
+    {label:'3. Рассказ про оффер', pct:offerPct, n:stages[2], bar:'#FAC775', tx:'#633806', drop:`−${agreedPct-offerPct} п.п.`},
+    {label:'4. Договорились о встрече', pct:meetPct, n:stages[3], bar:'#F5C4B3', tx:'#712B13', drop:`−${offerPct-meetPct} п.п.`},
   ];
   document.getElementById('funnel-rows').innerHTML = fData.map(f=>`
     <div class="funnel-row">
@@ -909,21 +909,22 @@ ${s.dialog}
 
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify({ prompt })
     });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
 
     loadBar.style.width = '85%';
     loadText.textContent = 'Получаю результаты...';
 
     const data = await response.json();
-    const text = (data.content?.[0]?.text || '{}').replace(/```json|```/g,'').trim();
+    const text = (data.text || '{}').replace(/```json|```/g,'').trim();
 
     let result;
     try { result = JSON.parse(text); }
