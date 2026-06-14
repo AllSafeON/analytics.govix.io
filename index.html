@@ -822,24 +822,6 @@ function renderDashboard(data) {
         <div style="font-size:11px;color:var(--text3)">согласился, но не дошёл до оффера</div>
       </div>
     </div>
-    ${botRespondedLeftRows.length > 0 ? `
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:8px">
-      Примеры: бот ответил — клиент всё равно ушёл (${Math.min(botRespondedLeftRows.length,15)} из ${botRespondedLeftRows.length})
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Контакт</th><th>Длит.</th><th>Диалог</th><th>Запись</th></tr></thead>
-        <tbody>
-          ${botRespondedLeftRows.slice(0,15).map(r => `
-            <tr>
-              <td style="font-size:11px;color:var(--text3);white-space:nowrap">...${r.phone.slice(-4)}</td>
-              <td style="font-size:11px;white-space:nowrap">${r.durRaw}</td>
-              <td style="font-size:11px;color:var(--text2);max-width:480px;white-space:pre-wrap;line-height:1.5">${r.dialog.substring(0,300).replace(/</g,'&lt;')}</td>
-              <td style="font-size:11px;white-space:nowrap">${r.audio ? `<a href="${r.audio}" target="_blank" style="color:var(--blue);text-decoration:none;font-weight:500">▶ слушать</a>` : '—'}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>` : ''}
   `;
 
   document.getElementById('dashboard').classList.add('visible');
