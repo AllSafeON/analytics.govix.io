@@ -15,6 +15,7 @@ app.use(express.json({ limit: '100mb' }));
 
 // GET /api/data — отдать сохранённые данные
 app.get('/api/data', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   if (!fs.existsSync(DATA_FILE)) {
     return res.json({ data: null, fileName: null, uploadedAt: null });
   }

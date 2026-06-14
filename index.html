@@ -693,14 +693,22 @@ async function clearSavedData() {
 
 // авто-загрузка общих данных с сервера при открытии страницы
 window.addEventListener('DOMContentLoaded', async () => {
+  const title = uploadZone.querySelector('.upload-title');
+  const origTitle = title.textContent;
+  title.textContent = '⏳ Загружаю данные с сервера...';
   try {
-    const res = await fetch(API);
+    const res = await fetch(API, { cache: 'no-store' });
     const json = await res.json();
     if (json.data && json.data.length > 0) {
       document.getElementById('clear-btn').style.display = 'inline-block';
       processRawData(json.data, json.fileName, json.uploadedAt);
+    } else {
+      title.textContent = origTitle;
     }
-  } catch(e) { console.warn('Could not load data from server:', e); }
+  } catch(e) {
+    title.textContent = origTitle;
+    console.warn('Could not load data from server:', e);
+  }
 });
 
 function buildDataSummary(rows, colDialog, colDur, colReason, colPhone, colDate) {
