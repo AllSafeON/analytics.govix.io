@@ -84,7 +84,15 @@ tr:hover td{background:var(--surface2)}
 .issue-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}
 .issue-num.p1{background:var(--red-l);color:var(--red)}.issue-num.p2{background:var(--amber-l);color:var(--amber)}.issue-num.p3{background:var(--green-l);color:var(--green)}
 hr{border:none;border-top:1px solid var(--border);margin:20px 0}
-@media(max-width:680px){
+.filter-bar{display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 24px;gap:8px;flex-wrap:wrap;align-items:center}
+.filter-bar.visible{display:flex}
+.filter-label{font-size:11px;color:var(--text2);font-weight:600;white-space:nowrap}
+.filter-select{padding:5px 10px;border:1px solid var(--border2);border-radius:7px;font-size:12px;background:var(--surface);color:var(--text);cursor:pointer}
+.filter-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.filter-reset{padding:5px 12px;border:1px solid var(--border2);border-radius:7px;font-size:12px;background:var(--surface2);color:var(--text2);cursor:pointer;font-weight:500}
+.filter-reset:hover{background:var(--border)}
+.filter-count{font-size:11px;color:var(--text3);margin-left:4px}
+@media(max-width:680px){.filter-bar{padding:8px 12px}}
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   .card-grid{grid-template-columns:1fr}
   .insight-row{grid-template-columns:1fr}
@@ -116,6 +124,29 @@ hr{border:none;border-top:1px solid var(--border);margin:20px 0}
     Ожидаемые колонки: телефон · дата и время · длительность · статус · причина завершения · история диалога юзер-бот
   </div>
   <label for="csv-input" class="upload-btn">Выбрать файл</label>
+</div>
+
+<div class="filter-bar" id="filter-bar">
+  <span class="filter-label">Фильтр:</span>
+  <select class="filter-select" id="f-month" onchange="applyFilters()">
+    <option value="">Все месяцы</option>
+  </select>
+  <select class="filter-select" id="f-day" onchange="applyFilters()">
+    <option value="">Все дни недели</option>
+    <option value="Пн">Понедельник</option>
+    <option value="Вт">Вторник</option>
+    <option value="Ср">Среда</option>
+    <option value="Чт">Четверг</option>
+    <option value="Пт">Пятница</option>
+    <option value="Сб">Суббота</option>
+    <option value="Вс">Воскресенье</option>
+  </select>
+  <select class="filter-select" id="f-hour" onchange="applyFilters()">
+    <option value="">Все часы</option>
+  </select>
+  <div class="filter-sep"></div>
+  <button class="filter-reset" onclick="resetFilters()">✕ Сбросить</button>
+  <span class="filter-count" id="filter-count"></span>
 </div>
 
 <div class="page" id="dashboard">
@@ -389,6 +420,7 @@ hr{border:none;border-top:1px solid var(--border);margin:20px 0}
 
 <script>
 let charts = {};
+let allRows = []; // полный массив строк для фильтрации
 
 const csvInput = document.getElementById('csv-input');
 const uploadZone = document.getElementById('upload-zone');
@@ -483,6 +515,79 @@ function isLateStart(dialog, dur) {
 
 function destroyChart(id) {
   if (charts[id]) { try { charts[id].destroy(); } catch(e){} delete charts[id]; }
+}
+
+function buildFilterOptions(data) {
+  const sample = data[0] || {};
+  const colDate = getCol(sample, ['дата','date']);
+
+  const months = new Set();
+  const hours = new Set();
+  data.forEach(r => {
+    const dt = new Date((r[colDate]||'').replace(' ','T'));
+    if (!isNaN(dt.getTime())) {
+      months.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`);
+      hours.add(dt.getHours());
+    }
+  });
+
+  const mSel = document.getElementById('f-month');
+  mSel.innerHTML = '<option value="">Все месяцы</option>' +
+    [...months].sort().map(m => {
+      const [y,mo] = m.split('-');
+      const label = new Date(+y, +mo-1).toLocaleString('ru',{month:'long',year:'numeric'});
+      return `<option value="${m}">${label}</option>`;
+    }).join('');
+
+  const hSel = document.getElementById('f-hour');
+  hSel.innerHTML = '<option value="">Все часы</option>' +
+    [...hours].sort((a,b)=>a-b).map(h => `<option value="${h}">${h}:00 — ${h}:59</option>`).join('');
+
+  document.getElementById('filter-bar').classList.add('visible');
+}
+
+function applyFilters() {
+  if (!allRows.length) return;
+  const month = document.getElementById('f-month').value;
+  const day   = document.getElementById('f-day').value;
+  const hour  = document.getElementById('f-hour').value;
+
+  const sample = allRows[0] || {};
+  const colDate = getCol(sample, ['дата','date']);
+
+  let filtered = allRows;
+  if (month || day || hour !== '') {
+    filtered = allRows.filter(r => {
+      const dt = new Date((r[colDate]||'').replace(' ','T'));
+      if (isNaN(dt.getTime())) return false;
+      if (month) {
+        const m = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+        if (m !== month) return false;
+      }
+      if (day) {
+        const d = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][dt.getDay()];
+        if (d !== day) return false;
+      }
+      if (hour !== '') {
+        if (dt.getHours() !== +hour) return false;
+      }
+      return true;
+    });
+  }
+
+  const hasFilter = month || day || hour !== '';
+  const countEl = document.getElementById('filter-count');
+  countEl.textContent = hasFilter ? `Показано: ${filtered.length.toLocaleString()} из ${allRows.length.toLocaleString()}` : '';
+
+  renderDashboard(filtered);
+}
+
+function resetFilters() {
+  document.getElementById('f-month').value = '';
+  document.getElementById('f-day').value = '';
+  document.getElementById('f-hour').value = '';
+  document.getElementById('filter-count').textContent = '';
+  renderDashboard(allRows);
 }
 
 function renderDashboard(data) {
@@ -654,6 +759,8 @@ function processFile(file) {
         uploadZone.classList.add('loaded');
         title.textContent = `✅ Загружено ${res.data.length.toLocaleString()} записей — ${file.name}`;
         globalRows = res.data;
+        allRows = res.data;
+        buildFilterOptions(res.data);
         document.getElementById('clear-btn').style.display = 'inline-block';
         renderDashboard(res.data);
         // сохраняем на сервер — все увидят эти данные
@@ -678,16 +785,20 @@ function processRawData(data, fileName, uploadedAt) {
   const dateStr = uploadedAt ? ` · загружено ${new Date(uploadedAt).toLocaleString('ru')}` : '';
   title.textContent = `✅ ${data.length.toLocaleString()} записей — ${fileName}${dateStr}`;
   globalRows = data;
+  allRows = data;
+  buildFilterOptions(data);
   renderDashboard(data);
 }
 
 async function clearSavedData() {
   try { await fetch(API, { method: 'DELETE' }); } catch(e) {}
   globalRows = [];
+  allRows = [];
   uploadZone.classList.remove('loaded');
   const title = uploadZone.querySelector('.upload-title');
   title.textContent = 'Загрузите выгрузку звонков';
   document.getElementById('dashboard').classList.remove('visible');
+  document.getElementById('filter-bar').classList.remove('visible');
   document.getElementById('clear-btn').style.display = 'none';
 }
 
