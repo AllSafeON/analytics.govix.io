@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Botamin — Аналитический дашборд</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f3;--surface:#fff;--surface2:#f0efec;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.15);
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#a0a09a;
+  --blue:#185FA5;--blue-l:#E6F1FB;--blue-m:#B5D4F4;
+  --teal:#1D9E75;--teal-l:#E1F5EE;--teal-m:#9FE1CB;
+  --amber:#BA7517;--amber-l:#FAEEDA;--amber-m:#FAC775;
+  --red:#A32D2D;--red-l:#FCEBEB;--red-m:#F7C1C1;
+  --green:#3B6D11;--green-l:#EAF3DE;--green-m:#C0DD97;
+  --coral:#D85A30;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:15px;font-weight:600;letter-spacing:-0.3px}
+.nav-brand span{color:var(--blue)}
+.nav-meta{font-size:12px;color:var(--text3)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.upload-zone{margin:24px;border:2px dashed var(--border2);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:var(--blue-l)}
+.upload-zone.loaded{border-style:solid;border-color:var(--teal);background:var(--teal-l)}
+.upload-icon{font-size:36px;margin-bottom:10px}
+.upload-title{font-size:16px;font-weight:500;margin-bottom:6px}
+.upload-sub{font-size:12px;color:var(--text3);line-height:1.6}
+.upload-btn{display:inline-block;margin-top:14px;padding:9px 22px;background:var(--blue);color:#fff;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none}
+#csv-input{display:none}
+.page{padding:0 24px 48px;display:none}
+.page.visible{display:block}
+.section-title{font-size:11px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);margin:24px 0 12px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:4px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi-label{font-size:11px;color:var(--text2);margin-bottom:6px}
+.kpi-value{font-size:26px;font-weight:600;line-height:1;margin-bottom:4px}
+.kpi-sub{font-size:11px;color:var(--text3)}
+.kpi-value.blue{color:var(--blue)}.kpi-value.amber{color:var(--amber)}.kpi-value.red{color:var(--red)}.kpi-value.green{color:var(--green)}.kpi-value.teal{color:var(--teal)}
+.insight-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px}
+.insight{border-left:3px solid;border-radius:0 8px 8px 0;padding:10px 14px;font-size:12px;line-height:1.6}
+.insight.alert{background:var(--red-l);border-color:#E24B4A;color:#501313}
+.insight.warn{background:var(--amber-l);border-color:#EF9F27;color:#412402}
+.insight.good{background:var(--green-l);border-color:#639922;color:#173404}
+.insight strong{display:block;margin-bottom:3px;font-size:12px}
+.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card.full{grid-column:1/-1}
+.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.card-title span{font-size:11px;color:var(--text3);font-weight:400}
+.chart-wrap{position:relative;width:100%}
+.funnel-row{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.funnel-step{font-size:11px;color:var(--text2);width:190px;flex-shrink:0}
+.funnel-track{flex:1;background:var(--surface2);border-radius:4px;height:26px;overflow:hidden}
+.funnel-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;transition:width 0.8s cubic-bezier(.4,0,.2,1)}
+.funnel-pct{font-size:11px;color:var(--text2);width:44px;text-align:right;flex-shrink:0}
+.funnel-drop{font-size:10px;padding:2px 5px;border-radius:3px;width:56px;text-align:center;flex-shrink:0}
+.funnel-drop.bad{background:var(--red-l);color:var(--red)}
+.funnel-drop.ok{background:var(--green-l);color:var(--green)}
+.table-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--surface2);padding:8px 12px;text-align:left;font-weight:600;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:11px;color:var(--text2)}
+.ld{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:middle}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.badge.red{background:var(--red-l);color:var(--red)}.badge.amber{background:var(--amber-l);color:var(--amber)}.badge.green{background:var(--green-l);color:var(--green)}.badge.blue{background:var(--blue-l);color:var(--blue)}
+.ab-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ab-card{border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;line-height:1.6}
+.ab-card.control{border-left:3px solid #B4B2A9}
+.ab-card.variant{border-left:3px solid var(--teal)}
+.ab-head{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:6px}
+.ab-note{margin-top:8px;font-size:11px}
+.issue-list{list-style:none}
+.issue-list li{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:flex-start;line-height:1.5}
+.issue-list li:last-child{border-bottom:none}
+.issue-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}
+.issue-num.p1{background:var(--red-l);color:var(--red)}.issue-num.p2{background:var(--amber-l);color:var(--amber)}.issue-num.p3{background:var(--green-l);color:var(--green)}
+hr{border:none;border-top:1px solid var(--border);margin:20px 0}
+@media(max-width:680px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .card-grid{grid-template-columns:1fr}
+  .insight-row{grid-template-columns:1fr}
+  .ab-grid{grid-template-columns:1fr}
+  .funnel-step{width:120px}
+  .nav,.page,.upload-zone{padding-left:12px;padding-right:12px}
+  .upload-zone{margin:12px}
+  .page{padding-left:12px;padding-right:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-brand">Botamin <span>Аналитика</span></div>
+  <div class="nav-right">
+    <div class="nav-meta" id="nav-period">Нет данных</div>
+    <label for="csv-input" class="upload-btn" style="font-size:12px;padding:6px 14px">📂 Загрузить CSV</label>
+    <input type="file" id="csv-input" accept=".csv,.tsv">
+  </div>
+</div>
+
+<div class="upload-zone" id="upload-zone">
+  <div class="upload-icon">📊</div>
+  <div class="upload-title">Загрузите выгрузку звонков</div>
+  <div class="upload-sub">
+    CSV или TSV · до 100 000 строк · всё обрабатывается в браузере, данные никуда не отправляются<br>
+    Ожидаемые колонки: телефон · дата и время · длительность · статус · причина завершения · история диалога юзер-бот
+  </div>
+  <label for="csv-input" class="upload-btn">Выбрать файл</label>
+</div>
+
+<div class="page" id="dashboard">
+  <p class="section-title">Ключевые показатели</p>
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <p class="section-title">Автоматические находки</p>
+  <div class="insight-row" id="insights"></div>
+
+  <div class="card full" style="margin-bottom:12px">
+    <div class="card-title">Воронка диалога <span>% и кол-во от звонков с диалогом</span></div>
+    <div id="funnel-rows"></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">* Шаги определяются автоматически по ключевым словам в тексте диалога</div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Длительность звонков</div>
+      <div class="legend">
+        <span><span class="ld" style="background:#E24B4A"></span>0–5 сек</span>
+        <span><span class="ld" style="background:#EF9F27"></span>5–30 сек</span>
+        <span><span class="ld" style="background:#1D9E75"></span>&gt;30 сек</span>
+      </div>
+      <div class="chart-wrap" style="height:200px"><canvas id="durChart" role="img" aria-label="Длительность звонков">Распределение длительности звонков.</canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Причины завершения</div>
+      <div class="legend" id="hangup-legend"></div>
+      <div class="chart-wrap" style="height:200px"><canvas id="hangupChart" role="img" aria-label="Причины завершения">Распределение причин завершения.</canvas></div>
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Звонки по дням <span>всего и client_hangup</span></div>
+      <div class="chart-wrap" style="height:200px"><canvas id="dayChart" role="img" aria-label="Звонки по дням недели">Звонки по дням недели.</canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Конверсия по часам <span>звонков и % согласий</span></div>
+      <div class="chart-wrap" style="height:200px"><canvas id="hourChart" role="img" aria-label="Конверсия по часам дня">Конверсия по часам.</canvas></div>
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Критические проблемы <span>по приоритету</span></div>
+      <ul class="issue-list" id="issue-list"></ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Топ отраслей <span>звонков и конверсия до оффера</span></div>
+      <div id="industry-table"></div>
+    </div>
+  </div>
+
+  <div class="card full" style="margin-bottom:12px">
+    <div class="card-title">Повторные звонки одному контакту <span>усталость базы</span></div>
+    <div class="chart-wrap" style="height:160px"><canvas id="repeatChart" role="img" aria-label="Повторные звонки">Повторные звонки.</canvas></div>
+  </div>
+
+  <div class="card full" style="margin-bottom:12px">
+    <div class="card-title">🤖 Глубокий анализ всего массива через Claude AI <span>паттерны, причины ухода, рекомендации по всем записям</span></div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+      Claude получает статистику по всем диалогам сразу и делает системный анализ: находит повторяющиеся паттерны ухода, проблемы скрипта, рекомендации по улучшению. Это анализ всего массива, не выборки.
+    </p>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <select id="ai-depth" style="padding:7px 12px;border:1px solid var(--border2);border-radius:7px;font-size:12px;background:var(--surface)">
+        <option value="summary">Общий анализ всего массива</option>
+        <option value="dropout">Фокус: почему уходят после согласия</option>
+        <option value="script">Фокус: проблемы скрипта</option>
+        <option value="timing">Фокус: лучшее время для звонков</option>
+        <option value="industry">Фокус: какие отрасли конвертируют лучше</option>
+      </select>
+      <button onclick="runFullAnalysis()" id="ai-btn" style="padding:7px 20px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">
+        ▶ Запустить анализ всего массива
+      </button>
+      <span id="ai-status" style="font-size:12px;color:var(--text3)"></span>
+    </div>
+
+    <div id="ai-loading" style="display:none;padding:20px;text-align:center">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:8px" id="ai-loading-text">Подготовка данных...</div>
+      <div style="height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;max-width:300px;margin:0 auto">
+        <div id="ai-loading-bar" style="height:100%;background:var(--blue);border-radius:2px;width:0%;transition:width 0.5s"></div>
+      </div>
+    </div>
+
+    <div id="ai-output" style="display:none">
+      <!-- summary kpis -->
+      <div id="ai-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:16px"></div>
+      <!-- main analysis -->
+      <div id="ai-analysis-blocks" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+      <!-- sample dialogs -->
+      <div id="ai-samples-wrap" style="display:none">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:8px">Показательные диалоги из анализа</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Контакт</th><th>Длит.</th><th>Стадия</th><th>Причина ухода</th><th>Что пошло не так</th><th>Рекомендация</th></tr></thead>
+            <tbody id="ai-samples-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;font-size:11px;color:var(--text3)">
+      Модель: claude-sonnet-4-6 · Анализируются все записи массива · Диалоги передаются агрегированно — без персональных данных
+    </div>
+  </div>
+
+
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+      Гипотеза: бот начинает говорить с задержкой 1–2 сек → клиент решает что никто не отвечает → вешает трубку. Это технический баг, не проблема скрипта. Затрагивает ~80% потерь.
+    </p>
+    <div class="ab-grid">
+      <div class="ab-card control">
+        <div class="ab-head">Контроль — сейчас</div>
+        Бот ждёт 1–2 секунды после ответа клиента перед первым словом. Клиент говорит «алло», не слышит ответа и кладёт трубку. Паттерн: <code>user: алло → client_hangup</code> без единой реплики бота.
+        <div class="ab-note" style="color:var(--red)">Потери: ~80% дозвонившихся до диалога</div>
+      </div>
+      <div class="ab-card variant">
+        <div class="ab-head">Вариант B — снизить задержку</div>
+        Уменьшить паузу до 0.3–0.5 сек на уровне настроек платформы/SIP. Бот начинает говорить немедленно. Изменение техническое — скрипт не меняется.
+        <div class="ab-note" style="color:var(--teal)">Ожидаемый эффект: +30–50% к числу состоявшихся диалогов</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:var(--text3)">
+      Выборка: 500 звонков на ветку · Метрика успеха: % звонков с диалогом &gt;10 сек · Срок: 2–3 рабочих дня
+    </div>
+  </div>
+
+  <!-- SCRIPT ANALYSIS -->
+  <div class="card full" style="margin-bottom:12px">
+    <div class="card-title">Анализ скрипта — почему клиенты не понимают оффер <span>проблема #3 по приоритету</span></div>
+    <div class="insight warn" style="margin-bottom:16px">
+      <strong>🟡 Клиенты не понимают что им предлагают</strong>
+      Даже те кто согласился слушать — часто не могут ответить на вопрос бота, переспрашивают или уходят после оффера. Причина в структуре скрипта: бот задаёт вопрос до того как клиент понял ценность.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:10px">Реальные сигналы из диалогов</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="background:var(--red-l);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;color:#501313">
+            <strong>«Не понял, ещё раз»</strong><br>Клиент выслушал полный скрипт и попросил повторить. Информации слишком много за раз.
+          </div>
+          <div style="background:var(--red-l);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;color:#501313">
+            <strong>«Что, что у вас есть?»</strong><br>Клиент не расслышал или не понял первую реплику. Оффер не зацепил внимание.
+          </div>
+          <div style="background:var(--amber-l);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;color:#412402">
+            <strong>«Больше расскажите, не задавайте вопросы»</strong><br>Клиент прямо сказал: скрипт неудобен. Бот спрашивает раньше чем объяснил.
+          </div>
+          <div style="background:var(--amber-l);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;color:#412402">
+            <strong>«А что вы продаёте?»</strong><br>После полного оффера клиент не понял продукт. Формулировка слишком абстрактна.
+          </div>
+          <div style="background:var(--amber-l);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55;color:#412402">
+            <strong>«Вы бот или человек?»</strong><br>Клиент не понял с кем говорит — бот не представился чётко в начале.
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:10px">Три структурных проблемы скрипта</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="border-left:3px solid #E24B4A;padding:10px 14px;background:var(--red-l);border-radius:0 8px 8px 0;font-size:12px;line-height:1.6;color:#501313">
+            <strong>Проблема 1: вопрос до понимания ценности</strong><br>
+            «Это к вам вопрос или к коммерческому директору?» — бот спрашивает это до того как клиент понял зачем ему это нужно. Клиент не готов отвечать.
+          </div>
+          <div style="border-left:3px solid #E24B4A;padding:10px 14px;background:var(--red-l);border-radius:0 8px 8px 0;font-size:12px;line-height:1.6;color:#501313">
+            <strong>Проблема 2: перегруз в одной реплике</strong><br>
+            Название компании + продукт + отрасль + кейс + запрос на время = 5 блоков за раз. Клиент обрабатывает только первые 2.
+          </div>
+          <div style="border-left:3px solid #EF9F27;padding:10px 14px;background:var(--amber-l);border-radius:0 8px 8px 0;font-size:12px;line-height:1.6;color:#412402">
+            <strong>Проблема 3: абстрактный оффер</strong><br>
+            «ИИ-продавец в первую линию» — клиент не понимает что это значит для него. Нет конкретной выгоды: сколько денег, сколько лидов, что изменится.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCRIPT AB TEST -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:10px">А/Б-тест #2 — новая структура диалога</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div style="border:1px solid var(--border);border-left:3px solid #B4B2A9;border-radius:0 8px 8px 0;padding:14px;font-size:12px;line-height:1.7">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:8px">Контроль — текущий скрипт</div>
+        <div style="background:var(--surface2);border-radius:6px;padding:10px;font-style:italic;color:var(--text2);margin-bottom:8px">
+          «[Имя], добрый день! Звоню насчёт искусственного интеллекта в вашем отделе продаж — у нас есть кейс по [отрасль], хотела показать. Тридцать секунд займет, ладно?»
+        </div>
+        <div style="color:var(--red);font-size:11px">— 5 блоков информации сразу<br>— Клиент не понимает выгоду<br>— Вопрос про КД до объяснения</div>
+      </div>
+      <div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;padding:14px;font-size:12px;line-height:1.7">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--teal);margin-bottom:8px">Вариант B — новая структура</div>
+        <div style="background:var(--teal-l);border-radius:6px;padding:10px;font-style:italic;color:#085041;margin-bottom:4px">
+          Шаг 1: «[Имя], добрый день! Вам сейчас удобно 30 секунд?»
+        </div>
+        <div style="background:var(--teal-l);border-radius:6px;padding:10px;font-style:italic;color:#085041;margin-bottom:4px">
+          Шаг 2 (после «да»): «Мы делаем робота который сам звонит вашим клиентам и записывает на встречи. Компании в [отрасль] получают +30% встреч без найма людей. Показать как?»
+        </div>
+        <div style="background:var(--teal-l);border-radius:6px;padding:10px;font-style:italic;color:#085041">
+          Шаг 3 (после интереса): «Отлично! Это к вам или к коммерческому?»
+        </div>
+        <div style="color:var(--teal);font-size:11px;margin-top:6px">+ Конкретная выгода («+30% встреч»)<br>+ Вопрос только после понимания<br>+ Короткие шаги без перегруза</div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface2);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--text2);line-height:1.6">
+      <strong style="color:var(--text)">Метрика успеха:</strong> % перехода от согласия к офферу (шаг 1→2 воронки) ·
+      <strong style="color:var(--text)">Выборка:</strong> 500 звонков на ветку ·
+      <strong style="color:var(--text)">Срок:</strong> 3–5 рабочих дней ·
+      <strong style="color:var(--text)">Ожидаемый эффект:</strong> +8–15 п.п. к конверсии шага 1→2
+    </div>
+  </div>
+
+  <!-- SCRIPT IMPROVEMENT GUIDE -->
+  <div class="card full" style="margin-bottom:12px">
+    <div class="card-title">Рекомендации по улучшению взаимодействия</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div style="padding:14px;background:var(--surface2);border-radius:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Убрать из скрипта</div>
+        <ul style="font-size:12px;line-height:1.8;color:var(--text2);padding-left:16px">
+          <li>Название компании в первой реплике</li>
+          <li>Отрасль в первой реплике</li>
+          <li>Вопрос «к вам или КД» до оффера</li>
+          <li>«Тридцать секунд займет» — звучит как уговоры</li>
+          <li>Слово «кейс» — клиенты не понимают</li>
+        </ul>
+      </div>
+      <div style="padding:14px;background:var(--surface2);border-radius:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Добавить в скрипт</div>
+        <ul style="font-size:12px;line-height:1.8;color:var(--text2);padding-left:16px">
+          <li>Конкретную выгоду в цифрах (+N% встреч)</li>
+          <li>Аналогию: «робот звонит вместо менеджера»</li>
+          <li>Короткий вопрос-проверку понимания</li>
+          <li>Представление бота как ИИ с первых слов</li>
+          <li>Один призыв к действию за раз</li>
+        </ul>
+      </div>
+      <div style="padding:14px;background:var(--surface2);border-radius:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em">Принципы диалога</div>
+        <ul style="font-size:12px;line-height:1.8;color:var(--text2);padding-left:16px">
+          <li>Один блок информации → один вопрос</li>
+          <li>Сначала выгода, потом детали</li>
+          <li>При «не понял» — упрощать, не повторять</li>
+          <li>При вопросе «вы бот?» — отвечать честно сразу</li>
+          <li>Не задавать 2 вопроса подряд</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card full" style="margin-bottom:12px">
+    <div class="card-title">Методология — почему эти метрики</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:12px;line-height:1.75;color:var(--text2)">
+      <div>
+        <strong style="color:var(--text);display:block;margin-bottom:6px">Воронка вместо итога</strong>
+        Бот проходит 4 шага последовательно. Итоговый % лидов — следствие. Воронка по шагам показывает причину: на каком именно переходе теряем клиентов и сколько. Без воронки непонятно что чинить.
+        <br><br>
+        <strong style="color:var(--text);display:block;margin-bottom:6px">Длительность как сигнал</strong>
+        Звонок менее 5 сек = диалога не было вообще. Это технический провал ещё до старта, не поведенческий отказ. Смешивать с обычными отказами нельзя — искажает метрики.
+      </div>
+      <div>
+        <strong style="color:var(--text);display:block;margin-bottom:6px">Три системные проблемы</strong>
+        1. <strong>Задержка старта</strong> — клиент говорит «алло», бот молчит (~80% потерь)<br>
+        2. <strong>Диалог с автоответчиком</strong> — бот тратит токены и деньги без смысла<br>
+        3. <strong>Баг с отраслью</strong> — пустая переменная снижает доверие
+        <br><br>
+        <strong style="color:var(--text);display:block;margin-bottom:6px">Порядок исправлений</strong>
+        Сначала задержка (техника, быстро, огромный эффект) → AMD-фильтр (экономия) → упрощение скрипта (А/Б-тест).
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let charts = {};
+
+const csvInput = document.getElementById('csv-input');
+const uploadZone = document.getElementById('upload-zone');
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+});
+csvInput.addEventListener('change', e => { if (e.target.files[0]) processFile(e.target.files[0]); });
+
+function processFile(file) {
+  const title = uploadZone.querySelector('.upload-title');
+  title.textContent = 'Обработка...';
+  setTimeout(() => {
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true, delimiter: '',
+      complete: res => {
+        uploadZone.classList.add('loaded');
+        title.textContent = `✅ Загружено ${res.data.length.toLocaleString()} записей — ${file.name}`;
+        renderDashboard(res.data);
+      },
+      error: err => { title.textContent = 'Ошибка: ' + err.message; }
+    });
+  }, 50);
+}
+
+function getCol(row, candidates) {
+  for (const c of candidates) {
+    const key = Object.keys(row).find(k => k.toLowerCase().replace(/\s/g,'').includes(c.toLowerCase().replace(/\s/g,'')));
+    if (key) return key;
+  }
+  return null;
+}
+
+function parseDuration(str) {
+  if (!str) return 0;
+  str = String(str).trim();
+  const parts = str.split(':');
+  if (parts.length === 2) return parseInt(parts[0]||0) * 60 + parseInt(parts[1]||0);
+  if (parts.length === 3) return parseInt(parts[0]||0) * 3600 + parseInt(parts[1]||0) * 60 + parseInt(parts[2]||0);
+  return parseInt(str) || 0;
+}
+
+function detectStage(dialog) {
+  if (!dialog) return 0;
+  const d = dialog.toLowerCase();
+  if (!d.includes('user:')) return 0;
+  const agreed = /ладно|слушаю|говорите|продолжайте|давайте|ага|да,|хорошо|интересно|любопытно|можно|конечно/.test(d);
+  const offer = /батамин|botamin|запускаем|продавца|первую линию|кейс с цифрами|квалифицирует|ии-продавца/.test(d);
+  const meeting = /встрече|созвониться|встречу|запишу|во вторник|в среду|пятнадцать минут|онлайн-встрет/.test(d);
+  const qual = /база|тысяч контактов|заявок в месяц|входящих|прозвон/.test(d);
+  if (qual && meeting) return 4;
+  if (meeting) return 3;
+  if (offer && agreed) return 2;
+  if (agreed) return 1;
+  return 0;
+}
+
+function isAutoresponder(dialog) {
+  if (!dialog) return false;
+  return /абонент сейчас не|абонент отключен|вне зоны|электронным помощником|робота-помощника|переводится на оператора|дождитесь ответа|в данный момент абонент|не доступен|говорит автоответчик/.test(dialog.toLowerCase());
+}
+
+function isLateStart(dialog, dur) {
+  // Pattern 1: no dialog + short call = dropped before bot spoke
+  if (!dialog && dur <= 6) return true;
+  if (!dialog) return false;
+  const d = dialog.trim();
+  const dl = d.toLowerCase();
+
+  // Pattern 2: user speaks first — classic late start
+  if (/^user:\s*(алло|але|да\b|слушаю|говорите)/i.test(d)) return true;
+
+  // Pattern 3: bot only manages "алло..." before hangup
+  if (/^bot:\s*алло[\.…]+\s*$/i.test(d)) return true;
+  if (/^bot:\s*алло[\.…]+\s*алло[,\s]/i.test(d)) return true;
+
+  // Pattern 4: user repeats алло multiple times waiting
+  if (/user:\s*([аa]лло\s*){2,}/i.test(dl)) return true;
+  if (/user:\s*але\s+але/i.test(dl)) return true;
+
+  // Pattern 5: bot starts with "Алло...Алло, вы на связи" — connection delay
+  if (/^bot:\s*алло[\.…]+алло,?\s*вы на связи/i.test(d)) return true;
+
+  // Pattern 6: very short call, user only said алло, bot never reached pitch
+  if (dur <= 9 && /user:\s*(алло|але|да\b)/i.test(dl) && !/bot:.*(добрый|звоню|батамин|продавца)/i.test(dl)) return true;
+
+  return false;
+}
+
+function destroyChart(id) {
+  if (charts[id]) { try { charts[id].destroy(); } catch(e){} delete charts[id]; }
+}
+
+function renderDashboard(data) {
+  const sample = data[0] || {};
+  const colDur    = getCol(sample, ['длительность','duration']);
+  const colReason = getCol(sample, ['причина','reason','hangup']);
+  const colDialog = getCol(sample, ['история','dialog','диалог']);
+  const colDate   = getCol(sample, ['дата','date']);
+  const colPhone  = getCol(sample, ['телефон','phone']);
+
+  const rows = data.map(r => {
+    const dur = parseDuration(r[colDur]);
+    const dialog = r[colDialog] || '';
+    const reason = (r[colReason] || '').toLowerCase();
+    const dateRaw = r[colDate] || '';
+    const dt = new Date(dateRaw.replace(' ','T'));
+    const hour = isNaN(dt.getTime()) ? -1 : dt.getHours();
+    const dayNum = isNaN(dt.getTime()) ? -1 : dt.getDay();
+    const day = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][dayNum] || '';
+    const stage = detectStage(dialog);
+    const auto = isAutoresponder(dialog);
+    const late = isLateStart(dialog, dur);
+    const phone = r[colPhone] || '';
+    const indMatch = dialog.match(/кейс по ([^,\n"\.]{2,30})[,\.\s"]/);
+    const industry = indMatch ? indMatch[1].trim() : '';
+    return { dur, dialog, reason, hour, day, dayNum, stage, auto, late, phone, industry };
+  });
+
+  const total = rows.length;
+  const withDialog = rows.filter(r => r.dialog && r.dialog.length > 10);
+  const stageBase = withDialog.length || 1;
+  const stages = [0,1,2,3,4].map(s => withDialog.filter(r => r.stage >= s).length);
+  const shortCalls = rows.filter(r => r.dur <= 5).length;
+  const lateCount = rows.filter(r => r.late).length;
+  const autoCount = rows.filter(r => r.auto).length;
+  const emptyInd  = rows.filter(r => r.industry === '' && r.dialog.length > 10).length;
+
+  const agreedPct = Math.round(stages[1] / stageBase * 100);
+  const offerPct  = Math.round(stages[2] / stageBase * 100);
+  const meetPct   = Math.round(stages[3] / stageBase * 100);
+  const qualPct   = Math.round(stages[4] / stageBase * 100);
+  const shortPct  = Math.round(shortCalls / total * 100);
+  const latePct   = Math.round(lateCount / total * 100);
+
+  const phoneCounts = {};
+  rows.forEach(r => { if (r.phone) phoneCounts[r.phone] = (phoneCounts[r.phone]||0)+1; });
+  const repeatContacts = Object.values(phoneCounts).filter(v=>v>1).length;
+
+  document.getElementById('nav-period').textContent = `${total.toLocaleString()} звонков`;
+
+  // KPI
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Всего звонков</div><div class="kpi-value blue">${total.toLocaleString()}</div><div class="kpi-sub">в выгрузке</div></div>
+    <div class="kpi"><div class="kpi-label">Есть диалог</div><div class="kpi-value teal">${withDialog.length.toLocaleString()}</div><div class="kpi-sub">${Math.round(withDialog.length/total*100)}% от всех</div></div>
+    <div class="kpi"><div class="kpi-label">Звонки ≤5 сек</div><div class="kpi-value red">${shortPct}%</div><div class="kpi-sub">${shortCalls.toLocaleString()} звонков</div></div>
+    <div class="kpi"><div class="kpi-label">Согласие на разговор</div><div class="kpi-value amber">${agreedPct}%</div><div class="kpi-sub">${stages[1].toLocaleString()} диалогов</div></div>
+    <div class="kpi"><div class="kpi-label">Дошли до оффера</div><div class="kpi-value amber">${offerPct}%</div><div class="kpi-sub">${stages[2].toLocaleString()} диалогов</div></div>
+    <div class="kpi"><div class="kpi-label">Назначена встреча</div><div class="kpi-value ${meetPct>3?'green':'red'}">${meetPct}%</div><div class="kpi-sub">${stages[3].toLocaleString()} диалогов</div></div>
+    <div class="kpi"><div class="kpi-label">Автоответчик</div><div class="kpi-value red">${autoCount.toLocaleString()}</div><div class="kpi-sub">токены впустую</div></div>
+    <div class="kpi"><div class="kpi-label">Повт. контакты</div><div class="kpi-value amber">${repeatContacts.toLocaleString()}</div><div class="kpi-sub">звонили &gt;1 раза</div></div>
+  `;
+
+  // INSIGHTS — count all late-start variants for display
+  const latePatterns = {
+    noDialog: rows.filter(r => !r.dialog && r.dur <= 6).length,
+    userFirst: rows.filter(r => r.dialog && /^user:\s*(алло|але|да\b|слушаю)/i.test(r.dialog.trim())).length,
+    botOnlyAllo: rows.filter(r => r.dialog && /^bot:\s*алло[\.…]+\s*$/i.test(r.dialog.trim())).length,
+    repeatAllo: rows.filter(r => r.dialog && /user:\s*(алло\s*){2,}/i.test(r.dialog.toLowerCase())).length,
+  };
+  document.getElementById('insights').innerHTML = `
+    <div class="insight alert">
+      <strong>🔴 Задержка старта бота — ${lateCount.toLocaleString()} случаев (${latePct}%)</strong>
+      Учтены все паттерны: нет диалога + звонок ≤6 сек (${latePatterns.noDialog}), user говорит первым (${latePatterns.userFirst}), бот отвечает только «алло...» (${latePatterns.botOnlyAllo}), клиент повторяет «алло алло» (${latePatterns.repeatAllo}).
+      Это техническая проблема — снизить паузу до 0.3–0.5 сек на платформе.
+    </div>
+    <div class="insight warn">
+      <strong>🟡 Диалог с автоответчиком — ${autoCount} звонков</strong>
+      Бот говорит полный скрипт на автоответчик — токены и деньги впустую. Нужен AMD-детектор или стоп-список фраз: «абонент сейчас не», «вне зоны», «дождитесь ответа», «переводится на оператора».
+    </div>
+    <div class="insight ${emptyInd > 10 ? 'warn' : 'good'}">
+      <strong>${emptyInd > 10 ? '🟡 Баг с отраслью — ' + emptyInd + ' случаев' : '✅ Переменные заполнены'}</strong>
+      ${emptyInd > 10 ? '«Кейс по , хотела показать» — пустая переменная в шаблоне. Добавить валидацию перед отправкой звонка.' : 'Переменная отрасли заполнена в большинстве диалогов.'}
+    </div>
+  `;
+
+  // FUNNEL
+  const fData = [
+    {label:'Все с диалогом', pct:100, n:stageBase, bar:'#B5D4F4', tx:'#0C447C', drop:null},
+    {label:'1. Согласие на разговор', pct:agreedPct, n:stages[1], bar:'#9FE1CB', tx:'#085041', drop:`−${100-agreedPct}%`},
+    {label:'2. Рассказ про оффер', pct:offerPct, n:stages[2], bar:'#FAC775', tx:'#633806', drop:`−${agreedPct-offerPct} п.п.`},
+    {label:'3. Договорились о встрече', pct:meetPct, n:stages[3], bar:'#F5C4B3', tx:'#712B13', drop:`−${offerPct-meetPct} п.п.`},
+    {label:'4. Квалифицированы', pct:qualPct, n:stages[4], bar:'#C0DD97', tx:'#27500A', drop:`−${meetPct-qualPct} п.п.`},
+  ];
+  document.getElementById('funnel-rows').innerHTML = fData.map(f=>`
+    <div class="funnel-row">
+      <div class="funnel-step">${f.label}</div>
+      <div class="funnel-track"><div class="funnel-bar" style="width:${Math.max(f.pct,1)}%;background:${f.bar};color:${f.tx}">${f.pct}%</div></div>
+      <div class="funnel-pct" style="color:var(--text3);font-size:10px">${f.n.toLocaleString()}</div>
+      ${f.drop ? `<div class="funnel-drop bad">${f.drop}</div>` : '<div style="width:56px"></div>'}
+    </div>`).join('');
+
+  // DURATION
+  const durB = ['0–5 сек','5–10 сек','10–30 сек','30–60 сек','1–2 мин','2–5 мин','>5 мин'];
+  const durC = [rows.filter(r=>r.dur<=5).length,rows.filter(r=>r.dur>5&&r.dur<=10).length,rows.filter(r=>r.dur>10&&r.dur<=30).length,rows.filter(r=>r.dur>30&&r.dur<=60).length,rows.filter(r=>r.dur>60&&r.dur<=120).length,rows.filter(r=>r.dur>120&&r.dur<=300).length,rows.filter(r=>r.dur>300).length];
+  destroyChart('durChart');
+  charts.dur = new Chart(document.getElementById('durChart'),{type:'bar',data:{labels:durB,datasets:[{data:durC,backgroundColor:['#E24B4A','#E24B4A','#EF9F27','#EF9F27','#1D9E75','#1D9E75','#1D9E75'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},autoSkip:false,maxRotation:35}},y:{ticks:{font:{size:10}}}}}});
+
+  // HANGUP
+  const hL=['client_hangup','bot_hangup','no_answer','Другое'];
+  const hD=[rows.filter(r=>r.reason.includes('client')).length,rows.filter(r=>r.reason.includes('bot_hangup')).length,rows.filter(r=>r.reason.includes('no_answer')).length,rows.filter(r=>!r.reason.includes('client')&&!r.reason.includes('bot')&&!r.reason.includes('no_answer')).length];
+  const hColors=['#E24B4A','#378ADD','#EF9F27','#888780'];
+  document.getElementById('hangup-legend').innerHTML=hL.map((l,i)=>`<span><span class="ld" style="background:${hColors[i]}"></span>${l} ${Math.round(hD[i]/total*100)}%</span>`).join('');
+  destroyChart('hangupChart');
+  charts.hangup=new Chart(document.getElementById('hangupChart'),{type:'doughnut',data:{labels:hL,datasets:[{data:hD,backgroundColor:hColors,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+
+  // DAY
+  const dayOrder=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const dayC=dayOrder.map(d=>rows.filter(r=>r.day===d).length);
+  const dayH=dayOrder.map(d=>rows.filter(r=>r.day===d&&r.reason.includes('client')).length);
+  destroyChart('dayChart');
+  charts.day=new Chart(document.getElementById('dayChart'),{type:'bar',data:{labels:dayOrder,datasets:[{label:'Всего',data:dayC,backgroundColor:'#B5D4F4',borderWidth:0},{label:'Client hangup',data:dayH,backgroundColor:'#E24B4A99',borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:10}}}}}});
+
+  // HOUR
+  const hours=Array.from({length:14},(_,i)=>i+7);
+  const hourC=hours.map(h=>rows.filter(r=>r.hour===h).length);
+  const hourD=hours.map(h=>rows.filter(r=>r.hour===h&&r.stage>=1).length);
+  const hourP=hours.map((h,i)=>hourC[i]>0?Math.round(hourD[i]/hourC[i]*100):0);
+  destroyChart('hourChart');
+  charts.hour=new Chart(document.getElementById('hourChart'),{type:'bar',data:{labels:hours.map(h=>h+':00'),datasets:[{label:'Звонков',data:hourC,backgroundColor:'#B5D4F4',yAxisID:'y',borderWidth:0},{label:'% согласий',data:hourP,type:'line',borderColor:'#D85A30',backgroundColor:'transparent',yAxisID:'y1',tension:0.4,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{position:'left',ticks:{font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:10},callback:v=>v+'%'},min:0,max:100},x:{ticks:{font:{size:10},autoSkip:false,maxRotation:0}}}}});
+
+  // REPEAT
+  const repB=[1,2,3,4,5];
+  const repC=[...repB.map(n=>Object.values(phoneCounts).filter(v=>v===n).length),Object.values(phoneCounts).filter(v=>v>5).length];
+  destroyChart('repeatChart');
+  charts.repeat=new Chart(document.getElementById('repeatChart'),{type:'bar',data:{labels:[...repB.map(n=>n+' раз'),'>5 раз'],datasets:[{data:repC,backgroundColor:['#9FE1CB','#FAC775','#F5C4B3','#E24B4A','#A32D2D','#501313'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:10}}}}}});
+
+  // ISSUES
+  document.getElementById('issue-list').innerHTML=`
+    <li><div class="issue-num p1">1</div><div><strong>Задержка старта бота</strong> — ${lateCount.toLocaleString()} случаев (${latePct}%). Снизить паузу до 0.3–0.5 сек на платформе. Быстрый win.</div></li>
+    <li><div class="issue-num p1">2</div><div><strong>Диалог с автоответчиком</strong> — ${autoCount} случаев. Добавить AMD или стоп-список фраз для раннего завершения.</div></li>
+    <li><div class="issue-num p2">3</div><div><strong>Баг с пустой отраслью</strong> — ${emptyInd} случаев. Валидация переменных перед запуском звонка.</div></li>
+    <li><div class="issue-num p2">4</div><div><strong>Перегруженное приветствие</strong> — 4 блока в первой реплике. Протестировать: «[Имя], 30 секунд удобно?»</div></li>
+    <li><div class="issue-num p3">5</div><div><strong>Повторные звонки</strong> — ${repeatContacts.toLocaleString()} контактов обзвонили &gt;1 раза. Ограничить частоту повторных попыток.</div></li>
+  `;
+
+  // INDUSTRIES
+  const indC={},indS={};
+  rows.forEach(r=>{if(!r.industry)return;indC[r.industry]=(indC[r.industry]||0)+1;if(r.stage>=2)indS[r.industry]=(indS[r.industry]||0)+1;});
+  const topInd=Object.entries(indC).sort((a,b)=>b[1]-a[1]).slice(0,9);
+  document.getElementById('industry-table').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Отрасль</th><th>Звонков</th><th>До оффера</th></tr></thead><tbody>${topInd.map(([ind,cnt])=>{const p=Math.round((indS[ind]||0)/cnt*100);return`<tr><td>${ind}</td><td>${cnt.toLocaleString()}</td><td><span class="badge ${p>10?'green':'amber'}">${p}%</span></td></tr>`;}).join('')}</tbody></table></div>`;
+
+  document.getElementById('dashboard').classList.add('visible');
+}
+
+// ─── FULL DATASET AI ANALYSIS ───────────────────────────────
+let globalRows = [];
+
+// override processFile to capture rows
+const _origProcess = processFile;
+function processFile(file) {
+  const title = uploadZone.querySelector('.upload-title');
+  title.textContent = 'Обработка...';
+  setTimeout(() => {
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true, delimiter: '',
+      complete: res => {
+        uploadZone.classList.add('loaded');
+        title.textContent = `✅ Загружено ${res.data.length.toLocaleString()} записей — ${file.name}`;
+        globalRows = res.data;
+        renderDashboard(res.data);
+      },
+      error: err => { title.textContent = 'Ошибка: ' + err.message; }
+    });
+  }, 50);
+}
+
+function buildDataSummary(rows, colDialog, colDur, colReason, colPhone, colDate) {
+  const total = rows.length;
+  const withDialog = rows.filter(r => (r[colDialog]||'').length > 20);
+  const noDialog = total - withDialog.length;
+  const clientHangup = rows.filter(r => (r[colReason]||'').includes('client')).length;
+  const botHangup = rows.filter(r => (r[colReason]||'').toLowerCase().includes('bot_hangup')).length;
+  const noAnswer = rows.filter(r => (r[colReason]||'').includes('no_answer')).length;
+  const shortCalls = rows.filter(r => parseDuration(r[colDur]) <= 5).length;
+  const longCalls = rows.filter(r => parseDuration(r[colDur]) > 60).length;
+
+  // auto patterns
+  const autoResp = rows.filter(r => isAutoresponder(r[colDialog]||'')).length;
+  const lateStart = rows.filter(r => isLateStart(r[colDialog]||'', parseDuration(r[colDur]))).length;
+
+  // stage distribution
+  const stageDist = [0,1,2,3,4].map(s => withDialog.filter(r => detectStage(r[colDialog]||'') >= s).length);
+
+  // hour distribution
+  const hourDist = {};
+  rows.forEach(r => {
+    const dt = new Date((r[colDate]||'').replace(' ','T'));
+    if (!isNaN(dt.getTime())) {
+      const h = dt.getHours();
+      hourDist[h] = (hourDist[h]||0) + 1;
+    }
+  });
+  const bestHour = Object.entries(hourDist).sort((a,b)=>b[1]-a[1])[0];
+
+  // day distribution
+  const dayDist = {};
+  const dayNames = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  rows.forEach(r => {
+    const dt = new Date((r[colDate]||'').replace(' ','T'));
+    if (!isNaN(dt.getTime())) {
+      const d = dayNames[dt.getDay()];
+      dayDist[d] = (dayDist[d]||0) + 1;
+    }
+  });
+
+  // industry distribution
+  const indDist = {};
+  withDialog.forEach(r => {
+    const m = (r[colDialog]||'').match(/кейс по ([^,\n"\.]{2,30})[,\.\s"]/);
+    if (m) indDist[m[1].trim()] = (indDist[m[1].trim()]||0)+1;
+  });
+  const topInds = Object.entries(indDist).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // repeated phones
+  const phoneCounts = {};
+  rows.forEach(r => { const p = r[colPhone]; if(p) phoneCounts[p]=(phoneCounts[p]||0)+1; });
+  const repeated = Object.values(phoneCounts).filter(v=>v>1).length;
+
+  // sample dialogs - take 15 representative ones (mix of stages)
+  const samples = [];
+  [1,2,3,4,0].forEach(stage => {
+    const stageRows = withDialog.filter(r => detectStage(r[colDialog]||'') === stage);
+    if (stageRows.length > 0) {
+      const pick = stageRows.slice(0, stage >= 3 ? 3 : 2);
+      pick.forEach(r => samples.push({
+        phone: (r[colPhone]||'').toString().slice(-4),
+        dur: r[colDur]||'',
+        reason: r[colReason]||'',
+        dialog: (r[colDialog]||'').substring(0, 600)
+      }));
+    }
+  });
+
+  return {
+    total, withDialog: withDialog.length, noDialog, clientHangup, botHangup, noAnswer,
+    shortCalls, longCalls, autoResp, lateStart,
+    stageDist, bestHour, dayDist, topInds, repeated,
+    samples: samples.slice(0, 15),
+    agreedPct: Math.round(stageDist[1]/(withDialog.length||1)*100),
+    offerPct: Math.round(stageDist[2]/(withDialog.length||1)*100),
+    meetPct: Math.round(stageDist[3]/(withDialog.length||1)*100),
+    qualPct: Math.round(stageDist[4]/(withDialog.length||1)*100),
+  };
+}
+
+async function runFullAnalysis() {
+  if (!globalRows.length) { alert('Сначала загрузите CSV файл'); return; }
+
+  const depth = document.getElementById('ai-depth').value;
+  const btn = document.getElementById('ai-btn');
+  const status = document.getElementById('ai-status');
+  const loading = document.getElementById('ai-loading');
+  const output = document.getElementById('ai-output');
+  const loadText = document.getElementById('ai-loading-text');
+  const loadBar = document.getElementById('ai-loading-bar');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Анализирую...';
+  output.style.display = 'none';
+  loading.style.display = 'block';
+  loadBar.style.width = '10%';
+
+  // detect columns
+  const sample = globalRows[0] || {};
+  const colDialog = Object.keys(sample).find(k => /история|dialog|диалог/i.test(k)) || '';
+  const colDur    = Object.keys(sample).find(k => /длительность|duration/i.test(k)) || '';
+  const colReason = Object.keys(sample).find(k => /причина|reason|hangup/i.test(k)) || '';
+  const colPhone  = Object.keys(sample).find(k => /телефон|phone/i.test(k)) || '';
+  const colDate   = Object.keys(sample).find(k => /дата|date/i.test(k)) || '';
+
+  loadText.textContent = 'Агрегирую данные по всему массиву...';
+  loadBar.style.width = '30%';
+  await new Promise(r => setTimeout(r, 100));
+
+  const stats = buildDataSummary(globalRows, colDialog, colDur, colReason, colPhone, colDate);
+
+  loadText.textContent = 'Отправляю в Claude для анализа...';
+  loadBar.style.width = '55%';
+
+  const focusInstructions = {
+    summary: 'Сделай общий системный анализ всего массива звонков. Найди главные точки роста.',
+    dropout: 'Сфокусируйся на причинах ухода клиентов ПОСЛЕ того как они согласились слушать (шаг 1→2). Это главная точка потерь.',
+    script: 'Сфокусируйся на проблемах скрипта и взаимодействия бота с клиентом. Что клиент не понимает? Где скрипт мешает продаже?',
+    timing: 'Сфокусируйся на оптимальном времени звонков. Когда лучше всего звонить и когда не стоит?',
+    industry: 'Сфокусируйся на отраслях. Какие конвертируют лучше и почему? Где менять подход?'
+  };
+
+  const prompt = `Ты старший аналитик продаж. Проанализируй данные по ${stats.total.toLocaleString()} звонкам голосового бота.
+
+${focusInstructions[depth]}
+
+СТАТИСТИКА ПО ВСЕМУ МАССИВУ:
+- Всего звонков: ${stats.total.toLocaleString()}
+- Есть диалог: ${stats.withDialog.toLocaleString()} (${Math.round(stats.withDialog/stats.total*100)}%)
+- Нет диалога (сбросили сразу): ${stats.noDialog.toLocaleString()} (${Math.round(stats.noDialog/stats.total*100)}%)
+- Звонков ≤5 сек: ${stats.shortCalls.toLocaleString()} (${Math.round(stats.shortCalls/stats.total*100)}%)
+- Звонков >60 сек: ${stats.longCalls.toLocaleString()} (${Math.round(stats.longCalls/stats.total*100)}%)
+
+ПРИЧИНЫ ЗАВЕРШЕНИЯ:
+- client_hangup (клиент сбросил): ${stats.clientHangup.toLocaleString()} (${Math.round(stats.clientHangup/stats.total*100)}%)
+- bot_hangup (бот завершил): ${stats.botHangup.toLocaleString()} (${Math.round(stats.botHangup/stats.total*100)}%)
+- no_answer: ${stats.noAnswer.toLocaleString()} (${Math.round(stats.noAnswer/stats.total*100)}%)
+
+ВОРОНКА (от звонков с диалогом):
+- Шаг 1 — согласились слушать: ${stats.stageDist[1].toLocaleString()} (${stats.agreedPct}%)
+- Шаг 2 — услышали оффер: ${stats.stageDist[2].toLocaleString()} (${stats.offerPct}%)
+- Шаг 3 — договорились о встрече: ${stats.stageDist[3].toLocaleString()} (${stats.meetPct}%)
+- Шаг 4 — квалифицированы: ${stats.stageDist[4].toLocaleString()} (${stats.qualPct}%)
+
+ВЫЯВЛЕННЫЕ ТЕХНИЧЕСКИЕ ПРОБЛЕМЫ:
+- Задержка старта бота (клиент говорит первым или нет ответа): ${stats.lateStart.toLocaleString()} (${Math.round(stats.lateStart/stats.total*100)}%)
+- Диалог с автоответчиком (токены впустую): ${stats.autoResp.toLocaleString()}
+- Повторные звонки одному контакту: ${stats.repeated.toLocaleString()}
+
+ТОП ОТРАСЛЕЙ В БАЗЕ:
+${stats.topInds.map(([ind,cnt]) => `- ${ind}: ${cnt} звонков`).join('\n')}
+
+ЛУЧШИЙ ЧАС ДЛЯ ЗВОНКОВ: ${stats.bestHour ? stats.bestHour[0]+':00 ('+stats.bestHour[1]+' звонков)' : 'нет данных'}
+
+ПОКАЗАТЕЛЬНЫЕ ДИАЛОГИ ИЗ БАЗЫ (${stats.samples.length} штук для понимания паттернов):
+${stats.samples.map((s,i) => `
+[${i+1}] Контакт ...${s.phone} | Длит: ${s.dur} | Завершение: ${s.reason}
+${s.dialog}
+`).join('\n---\n')}
+
+Верни ответ ТОЛЬКО в JSON формате без markdown:
+{
+  "headline": "главный вывод в 1 предложении",
+  "critical_finding": "самая важная находка которую нужно исправить первой",
+  "problems": [
+    {
+      "priority": 1,
+      "title": "название проблемы",
+      "scale": "X% или X случаев из массива",
+      "description": "подробное описание проблемы с примерами из диалогов",
+      "fix": "конкретное решение",
+      "impact": "ожидаемый эффект от исправления"
+    }
+  ],
+  "script_issues": [
+    {"issue": "проблема скрипта", "example": "цитата из диалога", "fix": "как исправить"}
+  ],
+  "ab_tests": [
+    {"name": "название теста", "hypothesis": "гипотеза", "control": "текущий вариант", "variant": "новый вариант", "metric": "что измеряем", "expected": "ожидаемый результат"}
+  ],
+  "quick_wins": ["быстрое улучшение 1", "быстрое улучшение 2", "быстрое улучшение 3"],
+  "best_time_to_call": "вывод по времени звонков",
+  "top_industry_insight": "вывод по отраслям",
+  "funnel_claude": [
+    {"step": 0, "label": "Все звонки", "count_est": число, "pct": 100, "drop_reason": ""},
+    {"step": 1, "label": "Дозвонились и ответили", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
+    {"step": 2, "label": "Согласились слушать", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
+    {"step": 3, "label": "Услышали и поняли оффер", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
+    {"step": 4, "label": "Договорились о встрече", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
+    {"step": 5, "label": "Квалифицированы", "count_est": число, "pct": число, "drop_reason": ""}
+  ],
+  "funnel_vs_keywords": {
+    "comment": "сравнение точности: что даёт анализ по смыслу vs ключевые слова",
+    "keyword_funnel_accuracy": "оценка точности ключевых слов в % и почему они ошибаются",
+    "what_keywords_miss": "что упускает анализ по ключевым словам",
+    "claude_advantage": "что Claude видит лучше"
+  },
+  "dropout_by_step": [
+    {"step": "Шаг 0→1 (до согласия)", "top_reasons": ["причина 1", "причина 2", "причина 3"], "fix": "решение"},
+    {"step": "Шаг 1→2 (согласие→оффер)", "top_reasons": ["причина 1", "причина 2", "причина 3"], "fix": "решение"},
+    {"step": "Шаг 2→3 (оффер→встреча)", "top_reasons": ["причина 1", "причина 2", "причина 3"], "fix": "решение"},
+    {"step": "Шаг 3→4 (встреча→квалификация)", "top_reasons": ["причина 1", "причина 2"], "fix": "решение"}
+  ]
+}`;
+
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    loadBar.style.width = '85%';
+    loadText.textContent = 'Получаю результаты...';
+
+    const data = await response.json();
+    const text = (data.content?.[0]?.text || '{}').replace(/```json|```/g,'').trim();
+
+    let result;
+    try { result = JSON.parse(text); }
+    catch(e) { result = { headline: 'Ошибка парсинга', critical_finding: text.substring(0,200), problems:[], script_issues:[], ab_tests:[], quick_wins:[] }; }
+
+    loadBar.style.width = '100%';
+    loadText.textContent = 'Готово!';
+    await new Promise(r => setTimeout(r, 400));
+    loading.style.display = 'none';
+
+    // RENDER RESULTS
+    // KPIs
+    document.getElementById('ai-kpis').innerHTML = `
+      <div class="kpi"><div class="kpi-label">Проанализировано</div><div class="kpi-value blue">${stats.total.toLocaleString()}</div><div class="kpi-sub">всех записей</div></div>
+      <div class="kpi"><div class="kpi-label">Диалогов с оффером</div><div class="kpi-value amber">${stats.offerPct}%</div><div class="kpi-sub">${stats.stageDist[2].toLocaleString()} шт</div></div>
+      <div class="kpi"><div class="kpi-label">Встречи</div><div class="kpi-value ${stats.meetPct>3?'green':'red'}">${stats.meetPct}%</div><div class="kpi-sub">${stats.stageDist[3].toLocaleString()} шт</div></div>
+      <div class="kpi"><div class="kpi-label">Задержка старта</div><div class="kpi-value red">${Math.round(stats.lateStart/stats.total*100)}%</div><div class="kpi-sub">${stats.lateStart.toLocaleString()} случаев</div></div>
+    `;
+
+    const blocks = document.getElementById('ai-analysis-blocks');
+    blocks.innerHTML = '';
+
+    // Headline
+    blocks.innerHTML += `
+      <div style="background:var(--blue-l);border-left:4px solid var(--blue);border-radius:0 10px 10px 0;padding:14px 16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--blue);margin-bottom:4px">Главный вывод Claude по ${stats.total.toLocaleString()} звонкам</div>
+        <div style="font-size:14px;font-weight:500;color:#0C447C;line-height:1.5">${result.headline||''}</div>
+        ${result.critical_finding ? `<div style="font-size:12px;color:#185FA5;margin-top:6px;line-height:1.5">🎯 ${result.critical_finding}</div>` : ''}
+      </div>`;
+
+    // Problems
+    if (result.problems?.length) {
+      const pColors = ['alert','alert','warn','warn','good'];
+      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:6px">Проблемы по приоритету — найдено Claude по всему массиву</div>`;
+      result.problems.forEach((p, i) => {
+        blocks.innerHTML += `
+          <div class="insight ${pColors[i]||'warn'}">
+            <strong>#${p.priority||i+1} ${p.title||''} <span style="font-weight:400;opacity:0.8">— ${p.scale||''}</span></strong>
+            <div style="margin-top:4px">${p.description||''}</div>
+            ${p.fix ? `<div style="margin-top:6px"><strong>Решение:</strong> ${p.fix}</div>` : ''}
+            ${p.impact ? `<div style="margin-top:4px;opacity:0.85"><strong>Эффект:</strong> ${p.impact}</div>` : ''}
+          </div>`;
+      });
+    }
+
+    // Script issues
+    if (result.script_issues?.length) {
+      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:6px">Проблемы скрипта найденные по диалогам</div>`;
+      blocks.innerHTML += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">` +
+        result.script_issues.map(s => `
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;line-height:1.6">
+            <strong style="color:var(--red)">${s.issue||''}</strong>
+            ${s.example ? `<div style="margin:4px 0;font-style:italic;color:var(--text2);background:var(--surface2);padding:6px 8px;border-radius:4px;font-size:11px">"${s.example}"</div>` : ''}
+            <div style="color:var(--teal)">→ ${s.fix||''}</div>
+          </div>`).join('') + `</div>`;
+    }
+
+    // AB Tests
+    if (result.ab_tests?.length) {
+      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:6px">А/Б-тесты рекомендованные Claude</div>`;
+      result.ab_tests.forEach((t, i) => {
+        blocks.innerHTML += `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px">Тест ${i+1}: ${t.name||''}</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-style:italic">${t.hypothesis||''}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <div style="background:var(--surface2);border-radius:6px;padding:10px;font-size:12px"><strong style="font-size:10px;text-transform:uppercase;color:var(--text3)">Контроль</strong><br>${t.control||''}</div>
+              <div style="background:var(--teal-l);border-radius:6px;padding:10px;font-size:12px"><strong style="font-size:10px;text-transform:uppercase;color:var(--teal)">Вариант B</strong><br>${t.variant||''}</div>
+            </div>
+            <div style="font-size:11px;color:var(--text3)">Метрика: ${t.metric||''} · Ожидание: ${t.expected||''}</div>
+          </div>`;
+      });
+    }
+
+    // Quick wins + timing + industry
+    if (result.quick_wins?.length || result.best_time_to_call || result.top_industry_insight) {
+      blocks.innerHTML += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px">`;
+      if (result.quick_wins?.length) {
+        blocks.innerHTML += `<div style="background:var(--green-l);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--green);margin-bottom:8px">⚡ Быстрые улучшения</div>
+          <ul style="padding-left:16px;font-size:12px;line-height:1.9;color:#173404">${result.quick_wins.map(w=>`<li>${w}</li>`).join('')}</ul>
+        </div>`;
+      }
+      if (result.best_time_to_call) {
+        blocks.innerHTML += `<div style="background:var(--blue-l);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--blue);margin-bottom:8px">🕐 Оптимальное время</div>
+          <div style="font-size:12px;color:#0C447C;line-height:1.7">${result.best_time_to_call}</div>
+        </div>`;
+      }
+      if (result.top_industry_insight) {
+        blocks.innerHTML += `<div style="background:var(--amber-l);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--amber);margin-bottom:8px">🏭 По отраслям</div>
+          <div style="font-size:12px;color:#412402;line-height:1.7">${result.top_industry_insight}</div>
+        </div>`;
+      }
+      blocks.innerHTML += `</div>`;
+    }
+
+    // ── CLAUDE FUNNEL ──
+    if (result.funnel_claude?.length) {
+      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:8px">Воронка по оценке Claude — анализ по смыслу диалогов</div>`;
+      const fColors = ['#B5D4F4','#9FE1CB','#FAC775','#F5C4B3','#E9A8F5','#C0DD97'];
+      const fText   = ['#0C447C','#085041','#633806','#712B13','#6B2F83','#27500A'];
+      blocks.innerHTML += `<div style="background:var(--surface2);border-radius:10px;padding:16px">` +
+        result.funnel_claude.map((f, i) => `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:${i<result.funnel_claude.length-1?'8':'0'}px">
+            <div style="font-size:11px;color:var(--text2);width:200px;flex-shrink:0">${f.label||''}</div>
+            <div style="flex:1;background:rgba(0,0,0,0.06);border-radius:4px;height:26px;overflow:hidden">
+              <div style="width:${Math.max(f.pct||0,1)}%;height:100%;background:${fColors[i]||'#B5D4F4'};border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;color:${fText[i]||'#0C447C'}">${f.pct||0}%</div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);width:60px;text-align:right;flex-shrink:0">~${(f.count_est||0).toLocaleString()}</div>
+            ${f.drop_reason ? `<div style="font-size:10px;color:var(--red);background:var(--red-l);border-radius:4px;padding:2px 6px;max-width:200px;flex-shrink:0">${f.drop_reason}</div>` : '<div style="width:200px"></div>'}
+          </div>`).join('') + `</div>`;
+    }
+
+    // ── DROPOUT BY STEP ──
+    if (result.dropout_by_step?.length) {
+      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:8px">Причины ухода на каждом шаге воронки</div>`;
+      const stepColors = ['alert','alert','warn','warn'];
+      blocks.innerHTML += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">` +
+        result.dropout_by_step.map((d, i) => `
+          <div class="insight ${stepColors[i]||'warn'}" style="margin-bottom:0">
+            <strong>${d.step||''}</strong>
+            <ul style="padding-left:14px;margin-top:4px;line-height:1.8">
+              ${(d.top_reasons||[]).map(r=>`<li>${r}</li>`).join('')}
+            </ul>
+            ${d.fix ? `<div style="margin-top:6px;font-style:italic">→ ${d.fix}</div>` : ''}
+          </div>`).join('') + `</div>`;
+    }
+
+    // ── KEYWORDS VS CLAUDE COMPARISON ──
+    if (result.funnel_vs_keywords) {
+      const fvk = result.funnel_vs_keywords;
+      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:8px">Сравнение: ключевые слова vs анализ Claude</div>`;
+      blocks.innerHTML += `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="border:1px solid var(--border);border-left:3px solid #B4B2A9;border-radius:0 10px 10px 0;padding:14px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Анализ по ключевым словам</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:8px">${fvk.keyword_funnel_accuracy||''}</div>
+            <div style="font-size:12px;color:var(--red);line-height:1.6"><strong>Что упускает:</strong> ${fvk.what_keywords_miss||''}</div>
+          </div>
+          <div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;padding:14px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--teal);margin-bottom:8px">Анализ Claude по смыслу</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:8px">${fvk.comment||''}</div>
+            <div style="font-size:12px;color:var(--teal);line-height:1.6"><strong>Преимущество:</strong> ${fvk.claude_advantage||''}</div>
+          </div>
+        </div>`;
+    }
+
+    // Sample dialogs table
+    if (stats.samples.length) {
+      document.getElementById('ai-samples-wrap').style.display = 'block';
+      document.getElementById('ai-samples-body').innerHTML = stats.samples.map(s => `
+        <tr>
+          <td style="font-size:11px;color:var(--text3)">...${s.phone}</td>
+          <td style="font-size:11px">${s.dur}</td>
+          <td style="font-size:11px">${s.reason}</td>
+          <td colspan="3" style="font-size:11px;color:var(--text2);max-width:400px;white-space:pre-wrap;line-height:1.4">${s.dialog.substring(0,200)}...</td>
+        </tr>`).join('');
+    }
+
+    output.style.display = 'block';
+    status.textContent = `Анализ завершён · ${stats.total.toLocaleString()} записей`;
+
+  } catch(err) {
+    loading.style.display = 'none';
+    status.textContent = 'Ошибка: ' + err.message;
+    console.error(err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '▶ Запустить снова';
+}
+
+
+</script>
+</body>
+</html>
+
