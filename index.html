@@ -640,6 +640,8 @@ function renderDashboard(data) {
 // ─── FULL DATASET AI ANALYSIS ───────────────────────────────
 let globalRows = [];
 
+const API = '/api/data';
+
 // override processFile to capture rows
 const _origProcess = processFile;
 function processFile(file) {
@@ -648,34 +650,39 @@ function processFile(file) {
   setTimeout(() => {
     Papa.parse(file, {
       header: true, skipEmptyLines: true, delimiter: '',
-      complete: res => {
+      complete: async res => {
         uploadZone.classList.add('loaded');
         title.textContent = `✅ Загружено ${res.data.length.toLocaleString()} записей — ${file.name}`;
         globalRows = res.data;
-        // сохраняем данные и имя файла в localStorage
-        try {
-          localStorage.setItem('botamin_csv_data', JSON.stringify(res.data));
-          localStorage.setItem('botamin_csv_name', file.name);
-        } catch(e) { console.warn('localStorage full:', e); }
         document.getElementById('clear-btn').style.display = 'inline-block';
         renderDashboard(res.data);
+        // сохраняем на сервер — все увидят эти данные
+        try {
+          title.textContent += ' · сохраняю...';
+          await fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: res.data, fileName: file.name })
+          });
+          title.textContent = `✅ Загружено ${res.data.length.toLocaleString()} записей — ${file.name}`;
+        } catch(e) { console.warn('Save failed:', e); }
       },
       error: err => { title.textContent = 'Ошибка: ' + err.message; }
     });
   }, 50);
 }
 
-function processRawData(data, fileName) {
+function processRawData(data, fileName, uploadedAt) {
   uploadZone.classList.add('loaded');
   const title = uploadZone.querySelector('.upload-title');
-  title.textContent = `✅ Загружено ${data.length.toLocaleString()} записей — ${fileName}`;
+  const dateStr = uploadedAt ? ` · загружено ${new Date(uploadedAt).toLocaleString('ru')}` : '';
+  title.textContent = `✅ ${data.length.toLocaleString()} записей — ${fileName}${dateStr}`;
   globalRows = data;
   renderDashboard(data);
 }
 
-function clearSavedData() {
-  localStorage.removeItem('botamin_csv_data');
-  localStorage.removeItem('botamin_csv_name');
+async function clearSavedData() {
+  try { await fetch(API, { method: 'DELETE' }); } catch(e) {}
   globalRows = [];
   uploadZone.classList.remove('loaded');
   const title = uploadZone.querySelector('.upload-title');
@@ -684,19 +691,16 @@ function clearSavedData() {
   document.getElementById('clear-btn').style.display = 'none';
 }
 
-// авто-загрузка сохранённых данных при открытии страницы
-window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('botamin_csv_data');
-  const savedName = localStorage.getItem('botamin_csv_name') || 'сохранённые данные';
-  if (saved) {
-    try {
-      const data = JSON.parse(saved);
-      if (data && data.length > 0) {
-        document.getElementById('clear-btn').style.display = 'inline-block';
-        processRawData(data, savedName);
-      }
-    } catch(e) { localStorage.removeItem('botamin_csv_data'); }
-  }
+// авто-загрузка общих данных с сервера при открытии страницы
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch(API);
+    const json = await res.json();
+    if (json.data && json.data.length > 0) {
+      document.getElementById('clear-btn').style.display = 'inline-block';
+      processRawData(json.data, json.fileName, json.uploadedAt);
+    }
+  } catch(e) { console.warn('Could not load data from server:', e); }
 });
 
 function buildDataSummary(rows, colDialog, colDur, colReason, colPhone, colDate) {
