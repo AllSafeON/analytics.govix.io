@@ -618,18 +618,21 @@ function renderDashboard(data) {
   const colDialog = getCol(sample, ['история','dialog','диалог']);
   const colDate   = getCol(sample, ['дата','date']);
   const colPhone  = getCol(sample, ['телефон','phone']);
+  const colStatus = getCol(sample, ['статус','status']);
 
   const rows = data.map(r => {
     const dur = parseDuration(r[colDur]);
     const dialog = r[colDialog] || '';
-    const reason = (r[colReason] || '').toLowerCase();
+    const reasonRaw = r[colReason] || '';
+    const reason = reasonRaw.toLowerCase();
     const dateRaw = r[colDate] || '';
     const dt = new Date(dateRaw.replace(' ','T'));
     const hour = isNaN(dt.getTime()) ? -1 : dt.getHours();
     const dayNum = isNaN(dt.getTime()) ? -1 : dt.getDay();
     const day = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][dayNum] || '';
     const stage = detectStage(dialog);
-    const auto = isAutoresponder(dialog);
+    // Автоответчик: по полю причины ИЛИ по тексту диалога
+    const auto = reason === 'answering_machine' || isAutoresponder(dialog);
     const late = isLateStart(dialog, dur);
     const rawPhone = String(r[colPhone] || '').replace(/\D/g, '');
     const phone = rawPhone.startsWith('8') ? '7' + rawPhone.slice(1) : rawPhone;
@@ -720,11 +723,11 @@ function renderDashboard(data) {
   // Легенда: Red=0–5 сек, Orange=5–30 сек, Green=>30 сек
   charts.dur = new Chart(document.getElementById('durChart'),{type:'bar',data:{labels:durB,datasets:[{data:durC,backgroundColor:['#E24B4A','#EF9F27','#EF9F27','#1D9E75','#1D9E75','#1D9E75','#1D9E75'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} звонков`}}},scales:{x:{ticks:{font:{size:10},autoSkip:false,maxRotation:35}},y:{ticks:{font:{size:10}}}}}});
 
-  // HANGUP
-  const hL=['client_hangup','bot_hangup','no_answer','Другое'];
-  const isClient = r => r.reason === 'client_hangup' || r.reason.startsWith('client_');
-  const isBot    = r => r.reason === 'bot_hangup'    || r.reason.startsWith('bot_');
-  const isNoAns  = r => r.reason === 'no_answer'     || r.reason.startsWith('no_answer');
+  // HANGUP — покрываем все реальные значения из данных
+  const hL=['client_hangup','bot_hangup','no_answer/timeout','Другое'];
+  const isClient = r => r.reason === 'client_hangup';
+  const isBot    = r => r.reason === 'bot_hangup' || r.reason === 'elevenlabs_hangup' || r.reason === 'hangup';
+  const isNoAns  = r => r.reason === 'no_answer' || r.reason === 'queue_timeout' || r.reason === 'no_user_speech' || r.reason === 'bad_number' || r.reason === 'network_error';
   const hD=[rows.filter(isClient).length, rows.filter(isBot).length, rows.filter(isNoAns).length, rows.filter(r=>!isClient(r)&&!isBot(r)&&!isNoAns(r)).length];
   const hColors=['#E24B4A','#378ADD','#EF9F27','#888780'];
   document.getElementById('hangup-legend').innerHTML=hL.map((l,i)=>`<span><span class="ld" style="background:${hColors[i]}"></span>${l} ${Math.round(hD[i]/total*100)}%</span>`).join('');
