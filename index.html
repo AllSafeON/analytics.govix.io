@@ -211,7 +211,7 @@ hr{border:none;border-top:1px solid var(--border);margin:20px 0}
   <div class="insight-row" id="insights"></div>
 
   <div class="card full" style="margin-bottom:12px">
-    <div class="card-title">Воронка диалога <span>% и кол-во от звонков с диалогом</span></div>
+    <div class="card-title">Воронка диалога <span>% от звонков с диалогом · успех = согласился на встречу</span></div>
     <div id="funnel-rows"></div>
     <div style="font-size:10px;color:var(--text3);margin-top:8px">* Шаги определяются автоматически по ключевым словам в тексте диалога</div>
   </div>
@@ -711,10 +711,9 @@ function renderDashboard(data) {
   // FUNNEL
   const fData = [
     {label:'Все с диалогом', pct:100, n:stageBase, bar:'#B5D4F4', tx:'#0C447C', drop:null},
-    {label:'1. Сегментированы', pct:qualPct, n:stages[4], bar:'#C0DD97', tx:'#27500A', drop:`−${100-qualPct}%`},
-    {label:'2. Согласие на разговор', pct:agreedPct, n:stages[1], bar:'#9FE1CB', tx:'#085041', drop:`−${Math.round((stages[4]-stages[1])/(stages[4]||1)*100)}% от сегм.`},
-    {label:'3. Рассказ про оффер', pct:offerPct, n:stages[2], bar:'#FAC775', tx:'#633806', drop:`−${Math.round((stages[1]-stages[2])/(stages[1]||1)*100)}% от согл.`},
-    {label:'4. Договорились о встрече', pct:meetPct, n:stages[3], bar:'#F5C4B3', tx:'#712B13', drop:`−${Math.round((stages[2]-stages[3])/(stages[2]||1)*100)}% от оффера`},
+    {label:'1. Согласие на разговор', pct:agreedPct, n:stages[1], bar:'#9FE1CB', tx:'#085041', drop:`−${100-agreedPct}%`},
+    {label:'2. Рассказ про оффер', pct:offerPct, n:stages[2], bar:'#FAC775', tx:'#633806', drop:`−${Math.round((stages[1]-stages[2])/(stages[1]||1)*100)}% от согл.`},
+    {label:'3. ✅ Согласился на встречу', pct:meetPct, n:stages[3], bar:'#C0DD97', tx:'#27500A', drop:`−${Math.round((stages[2]-stages[3])/(stages[2]||1)*100)}% от оффера`},
   ];
   document.getElementById('funnel-rows').innerHTML = fData.map(f=>`
     <div class="funnel-row">
