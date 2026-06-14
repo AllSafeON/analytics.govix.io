@@ -138,14 +138,6 @@ tr:hover td{background:var(--surface2)}
 .issue-num.p1{background:var(--red-l);color:var(--red)}.issue-num.p2{background:var(--amber-l);color:var(--amber)}.issue-num.p3{background:var(--green-l);color:var(--green)}
 hr{border:none;border-top:1px solid var(--border);margin:20px 0}
 
-/* AI PANEL */
-.ai-badge{background:var(--purple-l);color:var(--purple);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:0.05em;border:1px solid var(--purple-m)}
-.ai-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;padding:16px;background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--border)}
-.ai-select{padding:8px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;background:var(--surface);color:var(--text);flex:1;min-width:200px}
-.ai-run-btn{padding:9px 22px;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:none;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;white-space:nowrap}
-.ai-run-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(37,99,235,0.3)}
-.ai-run-btn:disabled{opacity:0.55;cursor:not-allowed;transform:none;box-shadow:none}
-
 @media(max-width:768px){
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   .card-grid{grid-template-columns:1fr}
@@ -268,56 +260,7 @@ hr{border:none;border-top:1px solid var(--border);margin:20px 0}
     <div class="chart-wrap" style="height:160px"><canvas id="repeatChart" role="img" aria-label="Повторные звонки">Повторные звонки.</canvas></div>
   </div>
 
-  <div class="card full" style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <div class="card-title" style="margin:0">Глубокий AI анализ</div>
-      <span class="ai-badge">Claude AI</span>
-    </div>
-    <p style="font-size:12px;color:var(--text2);line-height:1.7">
-      Claude анализирует статистику по всем диалогам: паттерны ухода, проблемы скрипта, рекомендации по улучшению конверсии.
-    </p>
-    <div class="ai-controls">
-      <select id="ai-depth" class="ai-select">
-        <option value="summary">📊 Общий анализ всего массива</option>
-        <option value="dropout">🚪 Почему уходят после согласия</option>
-        <option value="script">📝 Проблемы скрипта</option>
-        <option value="timing">⏰ Лучшее время для звонков</option>
-        <option value="industry">🏢 Какие отрасли конвертируют лучше</option>
-      </select>
-      <button onclick="runFullAnalysis()" id="ai-btn" class="ai-run-btn">
-        ▶ Запустить анализ
-      </button>
-      <span id="ai-status" style="font-size:12px;color:var(--text3)"></span>
-    </div>
 
-    <div id="ai-loading" style="display:none;padding:24px;text-align:center;background:var(--surface2);border-radius:var(--r-sm);margin-top:12px">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:10px" id="ai-loading-text">Подготовка данных...</div>
-      <div style="height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;max-width:320px;margin:0 auto">
-        <div id="ai-loading-bar" style="height:100%;background:linear-gradient(90deg,var(--blue),var(--purple));border-radius:2px;width:0%;transition:width 0.5s ease"></div>
-      </div>
-    </div>
-
-    <div id="ai-output" style="display:none">
-      <!-- summary kpis -->
-      <div id="ai-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:16px"></div>
-      <!-- main analysis -->
-      <div id="ai-analysis-blocks" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
-      <!-- sample dialogs -->
-      <div id="ai-samples-wrap" style="display:none">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:8px">Показательные диалоги из анализа</div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Контакт</th><th>Длит.</th><th>Стадия</th><th>Причина ухода</th><th>Что пошло не так</th><th>Рекомендация</th></tr></thead>
-            <tbody id="ai-samples-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div style="margin-top:12px;font-size:11px;color:var(--text3)">
-      Модель: claude-sonnet-4-6 · Анализируются все записи массива · Диалоги передаются агрегированно — без персональных данных
-    </div>
-  </div>
 
 
     <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">
@@ -497,22 +440,6 @@ uploadZone.addEventListener('drop', e => {
 });
 csvInput.addEventListener('change', e => { if (e.target.files[0]) processFile(e.target.files[0]); });
 
-function processFile(file) {
-  const title = uploadZone.querySelector('.upload-title');
-  title.textContent = 'Обработка...';
-  setTimeout(() => {
-    Papa.parse(file, {
-      header: true, skipEmptyLines: true, delimiter: '',
-      complete: res => {
-        uploadZone.classList.add('loaded');
-        title.textContent = `✅ Загружено ${res.data.length.toLocaleString()} записей — ${file.name}`;
-        renderDashboard(res.data);
-      },
-      error: err => { title.textContent = 'Ошибка: ' + err.message; }
-    });
-  }, 50);
-}
-
 function getCol(row, candidates) {
   for (const c of candidates) {
     const key = Object.keys(row).find(k => k.toLowerCase().replace(/\s/g,'').includes(c.toLowerCase().replace(/\s/g,'')));
@@ -525,9 +452,19 @@ function parseDuration(str) {
   if (!str) return 0;
   str = String(str).trim();
   const parts = str.split(':');
-  if (parts.length === 2) return parseInt(parts[0]||0) * 60 + parseInt(parts[1]||0);
-  if (parts.length === 3) return parseInt(parts[0]||0) * 3600 + parseInt(parts[1]||0) * 60 + parseInt(parts[2]||0);
-  return parseInt(str) || 0;
+  if (parts.length === 2) {
+    const m = parseInt(parts[0]) || 0;
+    const s = parseInt(parts[1]) || 0;
+    return m * 60 + s;
+  }
+  if (parts.length === 3) {
+    const h = parseInt(parts[0]) || 0;
+    const m = parseInt(parts[1]) || 0;
+    const s = parseInt(parts[2]) || 0;
+    return h * 3600 + m * 60 + s;
+  }
+  const n = parseFloat(str);
+  return isNaN(n) ? 0 : Math.round(n);
 }
 
 function detectStage(dialog) {
@@ -538,8 +475,8 @@ function detectStage(dialog) {
   const offer = /батамин|botamin|запускаем|продавца|первую линию|кейс с цифрами|сегментирует|ии-продавца/.test(d);
   const meeting = /встрече|созвониться|встречу|запишу|во вторник|в среду|пятнадцать минут|онлайн-встрет/.test(d);
   const qual = /база|тысяч контактов|заявок в месяц|входящих|прозвон/.test(d);
-  if (qual && meeting) return 4;
-  if (meeting) return 3;
+  if (qual && meeting && agreed) return 4;
+  if (meeting && agreed) return 3;
   if (offer && agreed) return 2;
   if (agreed) return 1;
   return 0;
@@ -547,7 +484,7 @@ function detectStage(dialog) {
 
 function isAutoresponder(dialog) {
   if (!dialog) return false;
-  return /абонент сейчас не|абонент отключен|вне зоны|электронным помощником|робота-помощника|переводится на оператора|дождитесь ответа|в данный момент абонент|не доступен|говорит автоответчик/.test(dialog.toLowerCase());
+  return /абонент сейчас не|абонент отключен|вне зоны|электронным помощником|робота-помощника|переводится на оператора|дождитесь ответа|в данный момент абонент|не доступен|говорит автоответчик|оставьте сообщение|после сигнала|голосовая почта|voicemail|недоступен|временно недоступен|номер не существует|оставьте своё сообщение|оставьте свое сообщение/.test(dialog.toLowerCase());
 }
 
 function isLateStart(dialog, dur) {
@@ -674,16 +611,19 @@ function renderDashboard(data) {
     const stage = detectStage(dialog);
     const auto = isAutoresponder(dialog);
     const late = isLateStart(dialog, dur);
-    const phone = r[colPhone] || '';
+    const rawPhone = String(r[colPhone] || '').replace(/\D/g, '');
+    const phone = rawPhone.startsWith('8') ? '7' + rawPhone.slice(1) : rawPhone;
     const indMatch = dialog.match(/кейс по ([^,\n"\.]{2,30})[,\.\s"]/);
-    const industry = indMatch ? indMatch[1].trim() : '';
+    const industry = indMatch ? indMatch[1].trim().toLowerCase() : '';
     return { dur, dialog, reason, hour, day, dayNum, stage, auto, late, phone, industry };
   });
 
   const total = rows.length;
   const withDialog = rows.filter(r => r.dialog && r.dialog.length > 10);
-  const stageBase = withDialog.length || 1;
-  const stages = [0,1,2,3,4].map(s => withDialog.filter(r => r.stage >= s).length);
+  // Реальные диалоги для воронки: исключаем обрывки ≤5 сек и автоответчики
+  const withRealDialog = withDialog.filter(r => r.dur > 5 && !r.auto);
+  const stageBase = withRealDialog.length || 1;
+  const stages = [0,1,2,3,4].map(s => withRealDialog.filter(r => r.stage >= s).length);
   const shortCalls = rows.filter(r => r.dur <= 5).length;
   const lateCount = rows.filter(r => r.late).length;
   const autoCount = rows.filter(r => r.auto).length;
@@ -705,11 +645,11 @@ function renderDashboard(data) {
   // KPI
   document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi"><div class="kpi-label">Всего звонков</div><div class="kpi-value blue">${total.toLocaleString()}</div><div class="kpi-sub">в выгрузке</div></div>
-    <div class="kpi"><div class="kpi-label">Есть диалог</div><div class="kpi-value teal">${withDialog.length.toLocaleString()}</div><div class="kpi-sub">${Math.round(withDialog.length/total*100)}% от всех</div></div>
+    <div class="kpi"><div class="kpi-label">Есть диалог</div><div class="kpi-value teal">${withRealDialog.length.toLocaleString()}</div><div class="kpi-sub">${Math.round(withRealDialog.length/total*100)}% · только &gt;5 сек</div></div>
     <div class="kpi"><div class="kpi-label">Звонки ≤5 сек</div><div class="kpi-value red">${shortPct}%</div><div class="kpi-sub">${shortCalls.toLocaleString()} звонков</div></div>
-    <div class="kpi"><div class="kpi-label">Согласие на разговор</div><div class="kpi-value amber">${agreedPct}%</div><div class="kpi-sub">${stages[1].toLocaleString()} диалогов</div></div>
-    <div class="kpi"><div class="kpi-label">Дошли до оффера</div><div class="kpi-value amber">${offerPct}%</div><div class="kpi-sub">${stages[2].toLocaleString()} диалогов</div></div>
-    <div class="kpi"><div class="kpi-label">Назначена встреча</div><div class="kpi-value ${meetPct>3?'green':'red'}">${meetPct}%</div><div class="kpi-sub">${stages[3].toLocaleString()} диалогов</div></div>
+    <div class="kpi"><div class="kpi-label">Согласие на разговор</div><div class="kpi-value amber">${agreedPct}%</div><div class="kpi-sub">${stages[1].toLocaleString()} из ${stageBase.toLocaleString()}</div></div>
+    <div class="kpi"><div class="kpi-label">Дошли до оффера</div><div class="kpi-value amber">${Math.round(stages[2]/(stages[1]||1)*100)}%</div><div class="kpi-sub">${stages[2].toLocaleString()} из ${stages[1].toLocaleString()} согл.</div></div>
+    <div class="kpi"><div class="kpi-label">Назначена встреча</div><div class="kpi-value ${Math.round(stages[3]/(stages[2]||1)*100)>10?'green':'red'}">${Math.round(stages[3]/(stages[2]||1)*100)}%</div><div class="kpi-sub">${stages[3].toLocaleString()} из ${stages[2].toLocaleString()} оффер.</div></div>
     <div class="kpi"><div class="kpi-label">Автоответчик</div><div class="kpi-value red">${autoCount.toLocaleString()}</div><div class="kpi-sub">токены впустую</div></div>
     <div class="kpi"><div class="kpi-label">Повт. контакты</div><div class="kpi-value amber">${repeatContacts.toLocaleString()}</div><div class="kpi-sub">звонили &gt;1 раза</div></div>
   `;
@@ -740,10 +680,10 @@ function renderDashboard(data) {
   // FUNNEL
   const fData = [
     {label:'Все с диалогом', pct:100, n:stageBase, bar:'#B5D4F4', tx:'#0C447C', drop:null},
-    {label:'1. Сегментированы', pct:qualPct, n:stages[4], bar:'#C0DD97', tx:'#27500A', drop:`−${100-qualPct}%`},
-    {label:'2. Согласие на разговор', pct:agreedPct, n:stages[1], bar:'#9FE1CB', tx:'#085041', drop:`−${qualPct-agreedPct} п.п.`},
-    {label:'3. Рассказ про оффер', pct:offerPct, n:stages[2], bar:'#FAC775', tx:'#633806', drop:`−${agreedPct-offerPct} п.п.`},
-    {label:'4. Договорились о встрече', pct:meetPct, n:stages[3], bar:'#F5C4B3', tx:'#712B13', drop:`−${offerPct-meetPct} п.п.`},
+    {label:'1. Согласие на разговор', pct:agreedPct, n:stages[1], bar:'#9FE1CB', tx:'#085041', drop:`−${100-agreedPct}%`},
+    {label:'2. Рассказ про оффер', pct:offerPct, n:stages[2], bar:'#FAC775', tx:'#633806', drop:`−${Math.round((stages[1]-stages[2])/(stages[1]||1)*100)}% от согл.`},
+    {label:'3. Договорились о встрече', pct:meetPct, n:stages[3], bar:'#F5C4B3', tx:'#712B13', drop:`−${Math.round((stages[2]-stages[3])/(stages[2]||1)*100)}% от оффера`},
+    {label:'4. Сегментированы', pct:qualPct, n:stages[4], bar:'#C0DD97', tx:'#27500A', drop:`−${Math.round((stages[3]-stages[4])/(stages[3]||1)*100)}% от встреч`},
   ];
   document.getElementById('funnel-rows').innerHTML = fData.map(f=>`
     <div class="funnel-row">
@@ -757,11 +697,15 @@ function renderDashboard(data) {
   const durB = ['0–5 сек','5–10 сек','10–30 сек','30–60 сек','1–2 мин','2–5 мин','>5 мин'];
   const durC = [rows.filter(r=>r.dur<=5).length,rows.filter(r=>r.dur>5&&r.dur<=10).length,rows.filter(r=>r.dur>10&&r.dur<=30).length,rows.filter(r=>r.dur>30&&r.dur<=60).length,rows.filter(r=>r.dur>60&&r.dur<=120).length,rows.filter(r=>r.dur>120&&r.dur<=300).length,rows.filter(r=>r.dur>300).length];
   destroyChart('durChart');
-  charts.dur = new Chart(document.getElementById('durChart'),{type:'bar',data:{labels:durB,datasets:[{data:durC,backgroundColor:['#E24B4A','#E24B4A','#EF9F27','#EF9F27','#1D9E75','#1D9E75','#1D9E75'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},autoSkip:false,maxRotation:35}},y:{ticks:{font:{size:10}}}}}});
+  // Легенда: Red=0–5 сек, Orange=5–30 сек, Green=>30 сек
+  charts.dur = new Chart(document.getElementById('durChart'),{type:'bar',data:{labels:durB,datasets:[{data:durC,backgroundColor:['#E24B4A','#EF9F27','#EF9F27','#1D9E75','#1D9E75','#1D9E75','#1D9E75'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} звонков`}}},scales:{x:{ticks:{font:{size:10},autoSkip:false,maxRotation:35}},y:{ticks:{font:{size:10}}}}}});
 
   // HANGUP
   const hL=['client_hangup','bot_hangup','no_answer','Другое'];
-  const hD=[rows.filter(r=>r.reason.includes('client')).length,rows.filter(r=>r.reason.includes('bot_hangup')).length,rows.filter(r=>r.reason.includes('no_answer')).length,rows.filter(r=>!r.reason.includes('client')&&!r.reason.includes('bot')&&!r.reason.includes('no_answer')).length];
+  const isClient = r => r.reason === 'client_hangup' || r.reason.startsWith('client_');
+  const isBot    = r => r.reason === 'bot_hangup'    || r.reason.startsWith('bot_');
+  const isNoAns  = r => r.reason === 'no_answer'     || r.reason.startsWith('no_answer');
+  const hD=[rows.filter(isClient).length, rows.filter(isBot).length, rows.filter(isNoAns).length, rows.filter(r=>!isClient(r)&&!isBot(r)&&!isNoAns(r)).length];
   const hColors=['#E24B4A','#378ADD','#EF9F27','#888780'];
   document.getElementById('hangup-legend').innerHTML=hL.map((l,i)=>`<span><span class="ld" style="background:${hColors[i]}"></span>${l} ${Math.round(hD[i]/total*100)}%</span>`).join('');
   destroyChart('hangupChart');
@@ -770,12 +714,15 @@ function renderDashboard(data) {
   // DAY
   const dayOrder=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
   const dayC=dayOrder.map(d=>rows.filter(r=>r.day===d).length);
-  const dayH=dayOrder.map(d=>rows.filter(r=>r.day===d&&r.reason.includes('client')).length);
+  const dayH=dayOrder.map(d=>rows.filter(r=>r.day===d&&isClient(r)).length);
   destroyChart('dayChart');
   charts.day=new Chart(document.getElementById('dayChart'),{type:'bar',data:{labels:dayOrder,datasets:[{label:'Всего',data:dayC,backgroundColor:'#B5D4F4',borderWidth:0},{label:'Client hangup',data:dayH,backgroundColor:'#E24B4A99',borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:10}}}}}});
 
-  // HOUR
-  const hours=Array.from({length:14},(_,i)=>i+7);
+  // HOUR — dynamic range from actual data
+  const allHours = rows.map(r=>r.hour).filter(h=>h>=0);
+  const minH = allHours.length ? Math.min(...allHours) : 7;
+  const maxH = allHours.length ? Math.max(...allHours) : 20;
+  const hours = Array.from({length: maxH - minH + 1}, (_, i) => i + minH);
   const hourC=hours.map(h=>rows.filter(r=>r.hour===h).length);
   const hourD=hours.map(h=>rows.filter(r=>r.hour===h&&r.stage>=1).length);
   const hourP=hours.map((h,i)=>hourC[i]>0?Math.round(hourD[i]/hourC[i]*100):0);
@@ -806,13 +753,8 @@ function renderDashboard(data) {
   document.getElementById('dashboard').classList.add('visible');
 }
 
-// ─── FULL DATASET AI ANALYSIS ───────────────────────────────
-let globalRows = [];
-
 const API = '/api/data';
 
-// override processFile to capture rows
-const _origProcess = processFile;
 function processFile(file) {
   const title = uploadZone.querySelector('.upload-title');
   title.textContent = 'Обработка...';
@@ -822,7 +764,6 @@ function processFile(file) {
       complete: async res => {
         uploadZone.classList.add('loaded');
         title.textContent = `✅ Загружено ${res.data.length.toLocaleString()} записей — ${file.name}`;
-        globalRows = res.data;
         allRows = res.data;
         buildFilterOptions(res.data);
         document.getElementById('clear-btn').style.display = 'inline-block';
@@ -848,7 +789,6 @@ function processRawData(data, fileName, uploadedAt) {
   const title = uploadZone.querySelector('.upload-title');
   const dateStr = uploadedAt ? ` · загружено ${new Date(uploadedAt).toLocaleString('ru')}` : '';
   title.textContent = `✅ ${data.length.toLocaleString()} записей — ${fileName}${dateStr}`;
-  globalRows = data;
   allRows = data;
   buildFilterOptions(data);
   renderDashboard(data);
@@ -856,7 +796,6 @@ function processRawData(data, fileName, uploadedAt) {
 
 async function clearSavedData() {
   try { await fetch(API, { method: 'DELETE' }); } catch(e) {}
-  globalRows = [];
   allRows = [];
   uploadZone.classList.remove('loaded');
   const title = uploadZone.querySelector('.upload-title');
@@ -886,404 +825,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-function buildDataSummary(rows, colDialog, colDur, colReason, colPhone, colDate) {
-  const total = rows.length;
-  const withDialog = rows.filter(r => (r[colDialog]||'').length > 20);
-  const noDialog = total - withDialog.length;
-  const clientHangup = rows.filter(r => (r[colReason]||'').includes('client')).length;
-  const botHangup = rows.filter(r => (r[colReason]||'').toLowerCase().includes('bot_hangup')).length;
-  const noAnswer = rows.filter(r => (r[colReason]||'').includes('no_answer')).length;
-  const shortCalls = rows.filter(r => parseDuration(r[colDur]) <= 5).length;
-  const longCalls = rows.filter(r => parseDuration(r[colDur]) > 60).length;
-
-  // auto patterns
-  const autoResp = rows.filter(r => isAutoresponder(r[colDialog]||'')).length;
-  const lateStart = rows.filter(r => isLateStart(r[colDialog]||'', parseDuration(r[colDur]))).length;
-
-  // stage distribution
-  const stageDist = [0,1,2,3,4].map(s => withDialog.filter(r => detectStage(r[colDialog]||'') >= s).length);
-
-  // hour distribution
-  const hourDist = {};
-  rows.forEach(r => {
-    const dt = new Date((r[colDate]||'').replace(' ','T'));
-    if (!isNaN(dt.getTime())) {
-      const h = dt.getHours();
-      hourDist[h] = (hourDist[h]||0) + 1;
-    }
-  });
-  const bestHour = Object.entries(hourDist).sort((a,b)=>b[1]-a[1])[0];
-
-  // day distribution
-  const dayDist = {};
-  const dayNames = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
-  rows.forEach(r => {
-    const dt = new Date((r[colDate]||'').replace(' ','T'));
-    if (!isNaN(dt.getTime())) {
-      const d = dayNames[dt.getDay()];
-      dayDist[d] = (dayDist[d]||0) + 1;
-    }
-  });
-
-  // industry distribution
-  const indDist = {};
-  withDialog.forEach(r => {
-    const m = (r[colDialog]||'').match(/кейс по ([^,\n"\.]{2,30})[,\.\s"]/);
-    if (m) indDist[m[1].trim()] = (indDist[m[1].trim()]||0)+1;
-  });
-  const topInds = Object.entries(indDist).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
-  // repeated phones
-  const phoneCounts = {};
-  rows.forEach(r => { const p = r[colPhone]; if(p) phoneCounts[p]=(phoneCounts[p]||0)+1; });
-  const repeated = Object.values(phoneCounts).filter(v=>v>1).length;
-
-  // sample dialogs - take 15 representative ones (mix of stages)
-  const samples = [];
-  [1,2,3,4,0].forEach(stage => {
-    const stageRows = withDialog.filter(r => detectStage(r[colDialog]||'') === stage);
-    if (stageRows.length > 0) {
-      const pick = stageRows.slice(0, stage >= 3 ? 3 : 2);
-      pick.forEach(r => samples.push({
-        phone: (r[colPhone]||'').toString().slice(-4),
-        dur: r[colDur]||'',
-        reason: r[colReason]||'',
-        dialog: (r[colDialog]||'').substring(0, 600)
-      }));
-    }
-  });
-
-  return {
-    total, withDialog: withDialog.length, noDialog, clientHangup, botHangup, noAnswer,
-    shortCalls, longCalls, autoResp, lateStart,
-    stageDist, bestHour, dayDist, topInds, repeated,
-    samples: samples.slice(0, 15),
-    agreedPct: Math.round(stageDist[1]/(withDialog.length||1)*100),
-    offerPct: Math.round(stageDist[2]/(withDialog.length||1)*100),
-    meetPct: Math.round(stageDist[3]/(withDialog.length||1)*100),
-    qualPct: Math.round(stageDist[4]/(withDialog.length||1)*100),
-  };
-}
-
-async function runFullAnalysis() {
-  if (!globalRows.length) { alert('Сначала загрузите CSV файл'); return; }
-
-  const depth = document.getElementById('ai-depth').value;
-  const btn = document.getElementById('ai-btn');
-  const status = document.getElementById('ai-status');
-  const loading = document.getElementById('ai-loading');
-  const output = document.getElementById('ai-output');
-  const loadText = document.getElementById('ai-loading-text');
-  const loadBar = document.getElementById('ai-loading-bar');
-
-  btn.disabled = true;
-  btn.textContent = '⏳ Анализирую...';
-  output.style.display = 'none';
-  loading.style.display = 'block';
-  loadBar.style.width = '10%';
-
-  // detect columns
-  const sample = globalRows[0] || {};
-  const colDialog = Object.keys(sample).find(k => /история|dialog|диалог/i.test(k)) || '';
-  const colDur    = Object.keys(sample).find(k => /длительность|duration/i.test(k)) || '';
-  const colReason = Object.keys(sample).find(k => /причина|reason|hangup/i.test(k)) || '';
-  const colPhone  = Object.keys(sample).find(k => /телефон|phone/i.test(k)) || '';
-  const colDate   = Object.keys(sample).find(k => /дата|date/i.test(k)) || '';
-
-  loadText.textContent = 'Агрегирую данные по всему массиву...';
-  loadBar.style.width = '30%';
-  await new Promise(r => setTimeout(r, 100));
-
-  const stats = buildDataSummary(globalRows, colDialog, colDur, colReason, colPhone, colDate);
-
-  loadText.textContent = 'Отправляю в Claude для анализа...';
-  loadBar.style.width = '55%';
-
-  const focusInstructions = {
-    summary: 'Сделай общий системный анализ всего массива звонков. Найди главные точки роста.',
-    dropout: 'Сфокусируйся на причинах ухода клиентов ПОСЛЕ того как они согласились слушать (шаг 1→2). Это главная точка потерь.',
-    script: 'Сфокусируйся на проблемах скрипта и взаимодействия бота с клиентом. Что клиент не понимает? Где скрипт мешает продаже?',
-    timing: 'Сфокусируйся на оптимальном времени звонков. Когда лучше всего звонить и когда не стоит?',
-    industry: 'Сфокусируйся на отраслях. Какие конвертируют лучше и почему? Где менять подход?'
-  };
-
-  const prompt = `Ты старший аналитик продаж. Проанализируй данные по ${stats.total.toLocaleString()} звонкам голосового бота.
-
-${focusInstructions[depth]}
-
-СТАТИСТИКА ПО ВСЕМУ МАССИВУ:
-- Всего звонков: ${stats.total.toLocaleString()}
-- Есть диалог: ${stats.withDialog.toLocaleString()} (${Math.round(stats.withDialog/stats.total*100)}%)
-- Нет диалога (сбросили сразу): ${stats.noDialog.toLocaleString()} (${Math.round(stats.noDialog/stats.total*100)}%)
-- Звонков ≤5 сек: ${stats.shortCalls.toLocaleString()} (${Math.round(stats.shortCalls/stats.total*100)}%)
-- Звонков >60 сек: ${stats.longCalls.toLocaleString()} (${Math.round(stats.longCalls/stats.total*100)}%)
-
-ПРИЧИНЫ ЗАВЕРШЕНИЯ:
-- client_hangup (клиент сбросил): ${stats.clientHangup.toLocaleString()} (${Math.round(stats.clientHangup/stats.total*100)}%)
-- bot_hangup (бот завершил): ${stats.botHangup.toLocaleString()} (${Math.round(stats.botHangup/stats.total*100)}%)
-- no_answer: ${stats.noAnswer.toLocaleString()} (${Math.round(stats.noAnswer/stats.total*100)}%)
-
-ВОРОНКА (от звонков с диалогом):
-- Шаг 1 — согласились слушать: ${stats.stageDist[1].toLocaleString()} (${stats.agreedPct}%)
-- Шаг 2 — услышали оффер: ${stats.stageDist[2].toLocaleString()} (${stats.offerPct}%)
-- Шаг 3 — договорились о встрече: ${stats.stageDist[3].toLocaleString()} (${stats.meetPct}%)
-- Шаг 4 — сегментированы: ${stats.stageDist[4].toLocaleString()} (${stats.qualPct}%)
-
-ВЫЯВЛЕННЫЕ ТЕХНИЧЕСКИЕ ПРОБЛЕМЫ:
-- Задержка старта бота (клиент говорит первым или нет ответа): ${stats.lateStart.toLocaleString()} (${Math.round(stats.lateStart/stats.total*100)}%)
-- Диалог с автоответчиком (токены впустую): ${stats.autoResp.toLocaleString()}
-- Повторные звонки одному контакту: ${stats.repeated.toLocaleString()}
-
-ТОП ОТРАСЛЕЙ В БАЗЕ:
-${stats.topInds.map(([ind,cnt]) => `- ${ind}: ${cnt} звонков`).join('\n')}
-
-ЛУЧШИЙ ЧАС ДЛЯ ЗВОНКОВ: ${stats.bestHour ? stats.bestHour[0]+':00 ('+stats.bestHour[1]+' звонков)' : 'нет данных'}
-
-ПОКАЗАТЕЛЬНЫЕ ДИАЛОГИ ИЗ БАЗЫ (${stats.samples.length} штук для понимания паттернов):
-${stats.samples.map((s,i) => `
-[${i+1}] Контакт ...${s.phone} | Длит: ${s.dur} | Завершение: ${s.reason}
-${s.dialog}
-`).join('\n---\n')}
-
-Верни ответ ТОЛЬКО в JSON формате без markdown:
-{
-  "headline": "главный вывод в 1 предложении",
-  "critical_finding": "самая важная находка которую нужно исправить первой",
-  "problems": [
-    {
-      "priority": 1,
-      "title": "название проблемы",
-      "scale": "X% или X случаев из массива",
-      "description": "подробное описание проблемы с примерами из диалогов",
-      "fix": "конкретное решение",
-      "impact": "ожидаемый эффект от исправления"
-    }
-  ],
-  "script_issues": [
-    {"issue": "проблема скрипта", "example": "цитата из диалога", "fix": "как исправить"}
-  ],
-  "ab_tests": [
-    {"name": "название теста", "hypothesis": "гипотеза", "control": "текущий вариант", "variant": "новый вариант", "metric": "что измеряем", "expected": "ожидаемый результат"}
-  ],
-  "quick_wins": ["быстрое улучшение 1", "быстрое улучшение 2", "быстрое улучшение 3"],
-  "best_time_to_call": "вывод по времени звонков",
-  "top_industry_insight": "вывод по отраслям",
-  "funnel_claude": [
-    {"step": 0, "label": "Все звонки", "count_est": число, "pct": 100, "drop_reason": ""},
-    {"step": 1, "label": "Дозвонились и ответили", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
-    {"step": 2, "label": "Согласились слушать", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
-    {"step": 3, "label": "Услышали и поняли оффер", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
-    {"step": 4, "label": "Договорились о встрече", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
-    {"step": 5, "label": "Сегментированы", "count_est": число, "pct": число, "drop_reason": ""}
-  ],
-  "funnel_vs_keywords": {
-    "comment": "сравнение точности: что даёт анализ по смыслу vs ключевые слова",
-    "keyword_funnel_accuracy": "оценка точности ключевых слов в % и почему они ошибаются",
-    "what_keywords_miss": "что упускает анализ по ключевым словам",
-    "claude_advantage": "что Claude видит лучше"
-  },
-  "dropout_by_step": [
-    {"step": "Шаг 0→1 (до согласия)", "top_reasons": ["причина 1", "причина 2", "причина 3"], "fix": "решение"},
-    {"step": "Шаг 1→2 (согласие→оффер)", "top_reasons": ["причина 1", "причина 2", "причина 3"], "fix": "решение"},
-    {"step": "Шаг 2→3 (оффер→встреча)", "top_reasons": ["причина 1", "причина 2", "причина 3"], "fix": "решение"},
-    {"step": "Шаг 3→4 (встреча→квалификация)", "top_reasons": ["причина 1", "причина 2"], "fix": "решение"}
-  ]
-}`;
-
-
-  try {
-    const response = await fetch('/api/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${response.status}`);
-    }
-
-    loadBar.style.width = '85%';
-    loadText.textContent = 'Получаю результаты...';
-
-    const data = await response.json();
-    const text = (data.text || '{}').replace(/```json|```/g,'').trim();
-
-    let result;
-    try { result = JSON.parse(text); }
-    catch(e) { result = { headline: 'Ошибка парсинга', critical_finding: text.substring(0,200), problems:[], script_issues:[], ab_tests:[], quick_wins:[] }; }
-
-    loadBar.style.width = '100%';
-    loadText.textContent = 'Готово!';
-    await new Promise(r => setTimeout(r, 400));
-    loading.style.display = 'none';
-
-    // RENDER RESULTS
-    // KPIs
-    document.getElementById('ai-kpis').innerHTML = `
-      <div class="kpi"><div class="kpi-label">Проанализировано</div><div class="kpi-value blue">${stats.total.toLocaleString()}</div><div class="kpi-sub">всех записей</div></div>
-      <div class="kpi"><div class="kpi-label">Диалогов с оффером</div><div class="kpi-value amber">${stats.offerPct}%</div><div class="kpi-sub">${stats.stageDist[2].toLocaleString()} шт</div></div>
-      <div class="kpi"><div class="kpi-label">Встречи</div><div class="kpi-value ${stats.meetPct>3?'green':'red'}">${stats.meetPct}%</div><div class="kpi-sub">${stats.stageDist[3].toLocaleString()} шт</div></div>
-      <div class="kpi"><div class="kpi-label">Задержка старта</div><div class="kpi-value red">${Math.round(stats.lateStart/stats.total*100)}%</div><div class="kpi-sub">${stats.lateStart.toLocaleString()} случаев</div></div>
-    `;
-
-    const blocks = document.getElementById('ai-analysis-blocks');
-    blocks.innerHTML = '';
-
-    // Headline
-    blocks.innerHTML += `
-      <div style="background:var(--blue-l);border-left:4px solid var(--blue);border-radius:0 10px 10px 0;padding:14px 16px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--blue);margin-bottom:4px">Главный вывод Claude по ${stats.total.toLocaleString()} звонкам</div>
-        <div style="font-size:14px;font-weight:500;color:#0C447C;line-height:1.5">${result.headline||''}</div>
-        ${result.critical_finding ? `<div style="font-size:12px;color:#185FA5;margin-top:6px;line-height:1.5">🎯 ${result.critical_finding}</div>` : ''}
-      </div>`;
-
-    // Problems
-    if (result.problems?.length) {
-      const pColors = ['alert','alert','warn','warn','good'];
-      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:6px">Проблемы по приоритету — найдено Claude по всему массиву</div>`;
-      result.problems.forEach((p, i) => {
-        blocks.innerHTML += `
-          <div class="insight ${pColors[i]||'warn'}">
-            <strong>#${p.priority||i+1} ${p.title||''} <span style="font-weight:400;opacity:0.8">— ${p.scale||''}</span></strong>
-            <div style="margin-top:4px">${p.description||''}</div>
-            ${p.fix ? `<div style="margin-top:6px"><strong>Решение:</strong> ${p.fix}</div>` : ''}
-            ${p.impact ? `<div style="margin-top:4px;opacity:0.85"><strong>Эффект:</strong> ${p.impact}</div>` : ''}
-          </div>`;
-      });
-    }
-
-    // Script issues
-    if (result.script_issues?.length) {
-      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:6px">Проблемы скрипта найденные по диалогам</div>`;
-      blocks.innerHTML += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">` +
-        result.script_issues.map(s => `
-          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;line-height:1.6">
-            <strong style="color:var(--red)">${s.issue||''}</strong>
-            ${s.example ? `<div style="margin:4px 0;font-style:italic;color:var(--text2);background:var(--surface2);padding:6px 8px;border-radius:4px;font-size:11px">"${s.example}"</div>` : ''}
-            <div style="color:var(--teal)">→ ${s.fix||''}</div>
-          </div>`).join('') + `</div>`;
-    }
-
-    // AB Tests
-    if (result.ab_tests?.length) {
-      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:6px">А/Б-тесты рекомендованные Claude</div>`;
-      result.ab_tests.forEach((t, i) => {
-        blocks.innerHTML += `
-          <div style="border:1px solid var(--border);border-radius:10px;padding:14px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:8px">Тест ${i+1}: ${t.name||''}</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-style:italic">${t.hypothesis||''}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <div style="background:var(--surface2);border-radius:6px;padding:10px;font-size:12px"><strong style="font-size:10px;text-transform:uppercase;color:var(--text3)">Контроль</strong><br>${t.control||''}</div>
-              <div style="background:var(--teal-l);border-radius:6px;padding:10px;font-size:12px"><strong style="font-size:10px;text-transform:uppercase;color:var(--teal)">Вариант B</strong><br>${t.variant||''}</div>
-            </div>
-            <div style="font-size:11px;color:var(--text3)">Метрика: ${t.metric||''} · Ожидание: ${t.expected||''}</div>
-          </div>`;
-      });
-    }
-
-    // Quick wins + timing + industry
-    if (result.quick_wins?.length || result.best_time_to_call || result.top_industry_insight) {
-      blocks.innerHTML += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px">`;
-      if (result.quick_wins?.length) {
-        blocks.innerHTML += `<div style="background:var(--green-l);border-radius:10px;padding:14px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--green);margin-bottom:8px">⚡ Быстрые улучшения</div>
-          <ul style="padding-left:16px;font-size:12px;line-height:1.9;color:#173404">${result.quick_wins.map(w=>`<li>${w}</li>`).join('')}</ul>
-        </div>`;
-      }
-      if (result.best_time_to_call) {
-        blocks.innerHTML += `<div style="background:var(--blue-l);border-radius:10px;padding:14px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--blue);margin-bottom:8px">🕐 Оптимальное время</div>
-          <div style="font-size:12px;color:#0C447C;line-height:1.7">${result.best_time_to_call}</div>
-        </div>`;
-      }
-      if (result.top_industry_insight) {
-        blocks.innerHTML += `<div style="background:var(--amber-l);border-radius:10px;padding:14px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--amber);margin-bottom:8px">🏭 По отраслям</div>
-          <div style="font-size:12px;color:#412402;line-height:1.7">${result.top_industry_insight}</div>
-        </div>`;
-      }
-      blocks.innerHTML += `</div>`;
-    }
-
-    // ── CLAUDE FUNNEL ──
-    if (result.funnel_claude?.length) {
-      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:8px">Воронка по оценке Claude — анализ по смыслу диалогов</div>`;
-      const fColors = ['#B5D4F4','#9FE1CB','#FAC775','#F5C4B3','#E9A8F5','#C0DD97'];
-      const fText   = ['#0C447C','#085041','#633806','#712B13','#6B2F83','#27500A'];
-      blocks.innerHTML += `<div style="background:var(--surface2);border-radius:10px;padding:16px">` +
-        result.funnel_claude.map((f, i) => `
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:${i<result.funnel_claude.length-1?'8':'0'}px">
-            <div style="font-size:11px;color:var(--text2);width:200px;flex-shrink:0">${f.label||''}</div>
-            <div style="flex:1;background:rgba(0,0,0,0.06);border-radius:4px;height:26px;overflow:hidden">
-              <div style="width:${Math.max(f.pct||0,1)}%;height:100%;background:${fColors[i]||'#B5D4F4'};border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;color:${fText[i]||'#0C447C'}">${f.pct||0}%</div>
-            </div>
-            <div style="font-size:10px;color:var(--text3);width:60px;text-align:right;flex-shrink:0">~${(f.count_est||0).toLocaleString()}</div>
-            ${f.drop_reason ? `<div style="font-size:10px;color:var(--red);background:var(--red-l);border-radius:4px;padding:2px 6px;max-width:200px;flex-shrink:0">${f.drop_reason}</div>` : '<div style="width:200px"></div>'}
-          </div>`).join('') + `</div>`;
-    }
-
-    // ── DROPOUT BY STEP ──
-    if (result.dropout_by_step?.length) {
-      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:8px">Причины ухода на каждом шаге воронки</div>`;
-      const stepColors = ['alert','alert','warn','warn'];
-      blocks.innerHTML += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">` +
-        result.dropout_by_step.map((d, i) => `
-          <div class="insight ${stepColors[i]||'warn'}" style="margin-bottom:0">
-            <strong>${d.step||''}</strong>
-            <ul style="padding-left:14px;margin-top:4px;line-height:1.8">
-              ${(d.top_reasons||[]).map(r=>`<li>${r}</li>`).join('')}
-            </ul>
-            ${d.fix ? `<div style="margin-top:6px;font-style:italic">→ ${d.fix}</div>` : ''}
-          </div>`).join('') + `</div>`;
-    }
-
-    // ── KEYWORDS VS CLAUDE COMPARISON ──
-    if (result.funnel_vs_keywords) {
-      const fvk = result.funnel_vs_keywords;
-      blocks.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-top:8px">Сравнение: ключевые слова vs анализ Claude</div>`;
-      blocks.innerHTML += `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div style="border:1px solid var(--border);border-left:3px solid #B4B2A9;border-radius:0 10px 10px 0;padding:14px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Анализ по ключевым словам</div>
-            <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:8px">${fvk.keyword_funnel_accuracy||''}</div>
-            <div style="font-size:12px;color:var(--red);line-height:1.6"><strong>Что упускает:</strong> ${fvk.what_keywords_miss||''}</div>
-          </div>
-          <div style="border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:0 10px 10px 0;padding:14px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--teal);margin-bottom:8px">Анализ Claude по смыслу</div>
-            <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:8px">${fvk.comment||''}</div>
-            <div style="font-size:12px;color:var(--teal);line-height:1.6"><strong>Преимущество:</strong> ${fvk.claude_advantage||''}</div>
-          </div>
-        </div>`;
-    }
-
-    // Sample dialogs table
-    if (stats.samples.length) {
-      document.getElementById('ai-samples-wrap').style.display = 'block';
-      document.getElementById('ai-samples-body').innerHTML = stats.samples.map(s => `
-        <tr>
-          <td style="font-size:11px;color:var(--text3)">...${s.phone}</td>
-          <td style="font-size:11px">${s.dur}</td>
-          <td style="font-size:11px">${s.reason}</td>
-          <td colspan="3" style="font-size:11px;color:var(--text2);max-width:400px;white-space:pre-wrap;line-height:1.4">${s.dialog.substring(0,200)}...</td>
-        </tr>`).join('');
-    }
-
-    output.style.display = 'block';
-    status.textContent = `Анализ завершён · ${stats.total.toLocaleString()} записей`;
-
-  } catch(err) {
-    loading.style.display = 'none';
-    status.textContent = 'Ошибка: ' + err.message;
-    console.error(err);
-  }
-
-  btn.disabled = false;
-  btn.textContent = '▶ Запустить снова';
-}
-
 
 </script>
 </body>
 </html>
-
