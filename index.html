@@ -439,7 +439,7 @@ function detectStage(dialog) {
   const d = dialog.toLowerCase();
   if (!d.includes('user:')) return 0;
   const agreed = /ладно|слушаю|говорите|продолжайте|давайте|ага|да,|хорошо|интересно|любопытно|можно|конечно/.test(d);
-  const offer = /батамин|botamin|запускаем|продавца|первую линию|кейс с цифрами|квалифицирует|ии-продавца/.test(d);
+  const offer = /батамин|botamin|запускаем|продавца|первую линию|кейс с цифрами|сегментирует|ии-продавца/.test(d);
   const meeting = /встрече|созвониться|встречу|запишу|во вторник|в среду|пятнадцать минут|онлайн-встрет/.test(d);
   const qual = /база|тысяч контактов|заявок в месяц|входящих|прозвон/.test(d);
   if (qual && meeting) return 4;
@@ -571,7 +571,7 @@ function renderDashboard(data) {
   // FUNNEL
   const fData = [
     {label:'Все с диалогом', pct:100, n:stageBase, bar:'#B5D4F4', tx:'#0C447C', drop:null},
-    {label:'1. Квалифицированы', pct:qualPct, n:stages[4], bar:'#C0DD97', tx:'#27500A', drop:`−${100-qualPct}%`},
+    {label:'1. Сегментированы', pct:qualPct, n:stages[4], bar:'#C0DD97', tx:'#27500A', drop:`−${100-qualPct}%`},
     {label:'2. Согласие на разговор', pct:agreedPct, n:stages[1], bar:'#9FE1CB', tx:'#085041', drop:`−${qualPct-agreedPct} п.п.`},
     {label:'3. Рассказ про оффер', pct:offerPct, n:stages[2], bar:'#FAC775', tx:'#633806', drop:`−${agreedPct-offerPct} п.п.`},
     {label:'4. Договорились о встрече', pct:meetPct, n:stages[3], bar:'#F5C4B3', tx:'#712B13', drop:`−${offerPct-meetPct} п.п.`},
@@ -852,7 +852,7 @@ ${focusInstructions[depth]}
 - Шаг 1 — согласились слушать: ${stats.stageDist[1].toLocaleString()} (${stats.agreedPct}%)
 - Шаг 2 — услышали оффер: ${stats.stageDist[2].toLocaleString()} (${stats.offerPct}%)
 - Шаг 3 — договорились о встрече: ${stats.stageDist[3].toLocaleString()} (${stats.meetPct}%)
-- Шаг 4 — квалифицированы: ${stats.stageDist[4].toLocaleString()} (${stats.qualPct}%)
+- Шаг 4 — сегментированы: ${stats.stageDist[4].toLocaleString()} (${stats.qualPct}%)
 
 ВЫЯВЛЕННЫЕ ТЕХНИЧЕСКИЕ ПРОБЛЕМЫ:
 - Задержка старта бота (клиент говорит первым или нет ответа): ${stats.lateStart.toLocaleString()} (${Math.round(stats.lateStart/stats.total*100)}%)
@@ -899,7 +899,7 @@ ${s.dialog}
     {"step": 2, "label": "Согласились слушать", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
     {"step": 3, "label": "Услышали и поняли оффер", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
     {"step": 4, "label": "Договорились о встрече", "count_est": число, "pct": число, "drop_reason": "главная причина потерь на этом шаге"},
-    {"step": 5, "label": "Квалифицированы", "count_est": число, "pct": число, "drop_reason": ""}
+    {"step": 5, "label": "Сегментированы", "count_est": число, "pct": число, "drop_reason": ""}
   ],
   "funnel_vs_keywords": {
     "comment": "сравнение точности: что даёт анализ по смыслу vs ключевые слова",
