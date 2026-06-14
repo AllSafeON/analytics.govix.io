@@ -469,12 +469,32 @@ function parseDuration(str) {
 
 function detectStage(dialog) {
   if (!dialog) return 0;
-  const d = dialog.toLowerCase();
-  if (!d.includes('user:')) return 0;
-  const agreed = /ладно|слушаю|говорите|продолжайте|давайте|ага|да,|хорошо|интересно|любопытно|можно|конечно/.test(d);
-  const offer = /батамин|botamin|запускаем|продавца|первую линию|кейс с цифрами|сегментирует|ии-продавца/.test(d);
-  const meeting = /встрече|созвониться|встречу|запишу|во вторник|в среду|пятнадцать минут|онлайн-встрет/.test(d);
-  const qual = /база|тысяч контактов|заявок в месяц|входящих|прозвон/.test(d);
+  if (!dialog.toLowerCase().includes('user:')) return 0;
+
+  // Извлекаем только реплики клиента (user:)
+  const userLines = dialog
+    .split('\n')
+    .filter(l => /^user:/i.test(l.trim()))
+    .map(l => l.replace(/^user:\s*/i, '').toLowerCase())
+    .join(' ');
+
+  // Извлекаем только реплики бота (bot:) для проверки оффера
+  const botLines = dialog
+    .split('\n')
+    .filter(l => /^bot:/i.test(l.trim()))
+    .map(l => l.replace(/^bot:\s*/i, '').toLowerCase())
+    .join(' ');
+
+  // Согласие — только от клиента
+  const agreed  = /ладно|слушаю|говорите|продолжайте|давайте|ага|да,|хорошо|интересно|любопытно|можно|конечно/.test(userLines);
+  // Оффер — бот упомянул продукт
+  const offer   = /батамин|botamin|запускаем|продавца|первую линию|кейс с цифрами|сегментирует|ии-продавца/.test(botLines);
+  // Встреча — клиент согласился на встречу или бот подтвердил запись
+  const meeting = /встрече|созвониться|встречу|запишу|во вторник|в среду|пятнадцать минут|онлайн-встрет/.test(userLines) ||
+                  /запишу|записал|встреча назначена|договорились/.test(botLines);
+  // Квалификация — клиент назвал цифры своего бизнеса
+  const qual    = /база|тысяч контактов|заявок в месяц|входящих|прозвон/.test(userLines);
+
   if (qual && meeting && agreed) return 4;
   if (meeting && agreed) return 3;
   if (offer && agreed) return 2;
