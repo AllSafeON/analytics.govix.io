@@ -621,6 +621,20 @@ function renderDashboard(data) {
 const API = '/api/data';
 
 function processFile(file) {
+  // Если на сервере уже есть данные — спросить подтверждение
+  if (allRows.length > 0) {
+    const ok = confirm(
+      `На сервере уже загружены данные (${allRows.length.toLocaleString()} записей).\n\n` +
+      `Загрузка нового файла «${file.name}» удалит их и заменит новыми.\n\n` +
+      `Продолжить?`
+    );
+    if (!ok) {
+      // сбросить input чтобы можно было выбрать тот же файл снова
+      document.getElementById('csv-input').value = '';
+      return;
+    }
+  }
+
   const title = uploadZone.querySelector('.upload-title');
   title.textContent = 'Обработка...';
   setTimeout(() => {
@@ -633,15 +647,16 @@ function processFile(file) {
         buildFilterOptions(res.data);
         document.getElementById('clear-btn').style.display = 'inline-block';
         renderDashboard(res.data);
-        // сохраняем на сервер — все увидят эти данные
+        // сначала удаляем старые данные, затем сохраняем новые
         try {
           title.textContent += ' · сохраняю...';
+          await fetch(API, { method: 'DELETE' });
           await fetch(API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: res.data, fileName: file.name })
           });
-          title.textContent = `✅ Загружено ${res.data.length.toLocaleString()} записей — ${file.name}`;
+          title.textContent = `✅ ${res.data.length.toLocaleString()} записей — ${file.name}`;
         } catch(e) { console.warn('Save failed:', e); }
       },
       error: err => { title.textContent = 'Ошибка: ' + err.message; }
