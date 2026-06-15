@@ -260,10 +260,6 @@ hr{border:none;border-top:1px solid var(--border);margin:20px 0}
     <div class="chart-wrap" style="height:160px"><canvas id="repeatChart" role="img" aria-label="Повторные звонки">Повторные звонки.</canvas></div>
   </div>
 
-  <div class="card full" style="margin-bottom:12px">
-    <div class="card-title">Анализ обрывов <span>где и почему клиент бросает трубку</span></div>
-    <div id="breakoff-analysis"></div>
-  </div>
 </div>
 
 <script>
@@ -617,48 +613,7 @@ function renderDashboard(data) {
   const topInd=Object.entries(indC).sort((a,b)=>b[1]-a[1]).slice(0,9);
   document.getElementById('industry-table').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Отрасль</th><th>Звонков</th><th>До оффера</th></tr></thead><tbody>${topInd.map(([ind,cnt])=>{const p=Math.round((indS[ind]||0)/cnt*100);return`<tr><td>${ind}</td><td>${cnt.toLocaleString()}</td><td><span class="badge ${p>10?'green':'amber'}">${p}%</span></td></tr>`;}).join('')}</tbody></table></div>`;
 
-  // BREAKOFF ANALYSIS
-  const botSilentRows = withRealDialog.filter(r => {
-    const botLines = r.dialog.split('\n').filter(l => /^bot:/i.test(l.trim()));
-    const botSpoke = botLines.some(l => l.replace(/^bot:\s*/i,'').trim().length > 30);
-    const clientAllo = /user:\s*(\u0430\u043b\u043b\u043e|\u0430\u043b\u0435)/i.test(r.dialog);
-    return !botSpoke && clientAllo && r.stage === 0;
-  });
-  const botRespondedLeftRows = withRealDialog.filter(r => {
-    const botLines = r.dialog.split('\n').filter(l => /^bot:/i.test(l.trim()));
-    const botSpoke = botLines.some(l => l.replace(/^bot:\s*/i,'').trim().length > 30);
-    const clientAllo = /user:\s*(\u0430\u043b\u043b\u043e|\u0430\u043b\u0435)/i.test(r.dialog);
-    return botSpoke && clientAllo && r.stage === 0;
-  });
-  const quickRejectRows = withRealDialog.filter(r =>
-    r.stage === 0 && !/user:\s*(\u0430\u043b\u043b\u043e|\u0430\u043b\u0435)/i.test(r.dialog)
-  );
-  const afterAgreeRows = withRealDialog.filter(r => r.stage === 1);
 
-  document.getElementById('breakoff-analysis').innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-      <div style="background:var(--red-l);border-radius:10px;padding:14px;border:1px solid var(--red-m)">
-        <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px;text-transform:uppercase">🔇 Бот не заговорил</div>
-        <div style="font-size:28px;font-weight:700;color:var(--red)">${botSilentRows.length.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--text3)">клиент сказал «алло» — тишина</div>
-      </div>
-      <div style="background:var(--amber-l);border-radius:10px;padding:14px;border:1px solid var(--amber-m)">
-        <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px;text-transform:uppercase">🔔 Бот ответил — клиент ушёл</div>
-        <div style="font-size:28px;font-weight:700;color:var(--amber)">${botRespondedLeftRows.length.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--text3)">задержка или не понял</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;text-transform:uppercase">🚫 Быстрый отказ</div>
-        <div style="font-size:28px;font-weight:700;color:var(--text)">${quickRejectRows.length.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--text3)">услышал бота — сразу отказал</div>
-      </div>
-      <div style="background:var(--green-l);border-radius:10px;padding:14px;border:1px solid var(--green-m)">
-        <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px;text-transform:uppercase">✅ Согласился → ушёл</div>
-        <div style="font-size:28px;font-weight:700;color:var(--green)">${afterAgreeRows.length.toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--text3)">согласился, но не дошёл до оффера</div>
-      </div>
-    </div>
-  `;
 
   document.getElementById('dashboard').classList.add('visible');
 }
